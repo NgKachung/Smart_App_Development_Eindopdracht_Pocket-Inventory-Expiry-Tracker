@@ -18,6 +18,9 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return const CupertinoApp(
       debugShowCheckedModeBanner: false,
+      theme: CupertinoThemeData(
+        scaffoldBackgroundColor: Color(0xFFF8FAF8),
+      ),
       home: LoginScreen(),
     );
   }
