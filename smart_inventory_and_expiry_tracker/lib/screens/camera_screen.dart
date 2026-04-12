@@ -1,5 +1,7 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'add_product_screen.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -48,7 +50,31 @@ class _CameraScreenState extends State<CameraScreen> {
         child: _error != null
             ? Center(child: Text('Camera error: $_error'))
             : (_isReady && _controller != null)
-                ? Center(child: CameraPreview(_controller!))
+                ? Stack(
+                    children: [
+                      Center(child: CameraPreview(_controller!)),
+                      Positioned(
+                        right: 18,
+                        bottom: 24,
+                        child: GestureDetector(
+                          onTap: () async {
+                            final product = await Navigator.of(context).push(CupertinoPageRoute(builder: (_) => const AddProductScreen()));
+                            // product is a Map when saved; integration can insert it into lists.
+                          },
+                          child: Container(
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade700,
+                              shape: BoxShape.circle,
+                              boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3))],
+                            ),
+                            child: const Icon(CupertinoIcons.add, color: Colors.white, size: 28),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
                 : const Center(child: CupertinoActivityIndicator()),
       ),
     );
