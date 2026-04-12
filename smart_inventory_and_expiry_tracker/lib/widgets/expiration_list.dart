@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import '../models/inventory_item.dart';
+import '../services/firestore_inventory_service.dart';
 import 'itemCard.dart';
 import 'item_detail_sheet.dart';
 
@@ -8,58 +10,73 @@ import 'item_detail_sheet.dart';
 class ExpirationList extends StatelessWidget {
   const ExpirationList({super.key});
 
+  static final FirestoreInventoryService _inventoryService = FirestoreInventoryService();
+
+  Widget _buildCard(BuildContext context, InventoryItem item) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: ItemCard(
+        title: item.title,
+        subtitle: item.subtitle,
+        imageUrl: item.imageUrl,
+        statusLabel: item.isExpired ? 'EXPIRED' : 'USE SOON',
+        statusColor: item.isExpired ? const Color(0xFFFFE6E6) : const Color(0xFFF7D9BD),
+        borderColor: item.isExpired ? const Color(0xFFD32F2F) : null,
+        stockCount: item.stockCount,
+        onTap: () {
+          showItemDetailSheet(
+            context: context,
+            title: item.title,
+            description: item.description,
+            imageUrl: item.imageUrl,
+            stockCount: item.stockCount,
+            expiryDate: item.expiryDate,
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: ItemCard(
-            title: 'Douwe Egberts Moka Royal',
-            subtitle: 'De warmste momenten van de dag beleef je met Douwe Egberts omdat...',
-            statusLabel: 'USE SOON',
-            statusColor: const Color(0xFFF7D9BD),
-            stockCount: 4,
-            onTap: () {
-              // ignore: avoid_print
-              print('Tapped Douwe Egberts Moka Royal (Expiration)');
-              showItemDetailSheet(
-                context: context,
-                title: 'Douwe Egberts Moka Royal',
-                description: 'Moka Royal is een uitgesproken koffie. Een krachtig samenspel van gemalen Arabica- en Robustabonen.',
-                stockCount: 4,
-                expiryDate: DateTime.now().add(const Duration(days: 1)),
-              );
-            },
-          ),
-        ),
+    return StreamBuilder<List<InventoryItem>>(
+      stream: _inventoryService.watchAllItems(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 28.0),
+            child: Center(child: CupertinoActivityIndicator()),
+          );
+        }
 
-        // Also show expired items in this tab, with a subtle red background
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: ItemCard(
-            title: 'Coca-Cola | Original taste',
-            subtitle: 'De klassieke Coca-Cola in flessen en blik. Perfect koud.',
-            statusLabel: 'EXPIRED',
-            statusColor: const Color(0xFFFFE6E6),
-            borderColor: const Color(0xFFD32F2F),
-            stockCount: 8,
-            onTap: () {
-              // ignore: avoid_print
-              print('Tapped Coca-Cola | Original taste (Expiration)');
-              showItemDetailSheet(
-                context: context,
-                title: 'Coca-Cola | Original taste',
-                description: 'De klassieke Coca-Cola in flessen en blik. Perfect koud.',
-                stockCount: 8,
-                expiryDate: DateTime.now().subtract(const Duration(days: 3)),
-              );
-            },
-          ),
-        ),
+        if (snapshot.hasError) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20.0),
+            child: Text(
+              'Firestore error: ${snapshot.error}',
+              style: TextStyle(color: Colors.grey.shade700),
+            ),
+          );
+        }
 
-        // If you later populate from a backend, map and filter items here by expiry level.
-      ],
+        final items = (snapshot.data ?? const <InventoryItem>[])
+            .where((item) => item.isUseSoon || item.isExpired)
+            .toList();
+
+        if (items.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20.0),
+            child: Text(
+              'Geen items die bijna verlopen of verlopen zijn voor dit account.',
+              style: TextStyle(color: Colors.grey.shade700),
+            ),
+          );
+        }
+
+        return Column(
+          children: items.map((item) => _buildCard(context, item)).toList(),
+        );
+      },
     );
   }
 }
