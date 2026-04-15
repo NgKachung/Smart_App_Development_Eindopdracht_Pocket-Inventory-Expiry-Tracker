@@ -12,6 +12,49 @@ class ExpirationList extends StatelessWidget {
 
   static final FirestoreInventoryService _inventoryService = FirestoreInventoryService();
 
+  Future<void> _confirmAndDelete(BuildContext context, InventoryItem item) async {
+    final shouldDelete = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (dialogContext) => CupertinoAlertDialog(
+        title: const Text('Verwijderen?'),
+        content: Text('Weet je zeker dat je "${item.title}" wilt verwijderen?'),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Annuleren'),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Verwijderen'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete != true) {
+      return;
+    }
+
+    try {
+      await _inventoryService.deleteItem(item.id);
+    } catch (e) {
+      await showCupertinoDialog<void>(
+        context: context,
+        builder: (dialogContext) => CupertinoAlertDialog(
+          title: const Text('Verwijderen mislukt'),
+          content: Text('Kon item niet verwijderen.\n$e'),
+          actions: [
+            CupertinoDialogAction(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
   Widget _buildCard(BuildContext context, InventoryItem item) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -23,6 +66,7 @@ class ExpirationList extends StatelessWidget {
         statusColor: item.isExpired ? const Color(0xFFFFE6E6) : const Color(0xFFF7D9BD),
         borderColor: item.isExpired ? const Color(0xFFD32F2F) : null,
         stockCount: item.stockCount,
+        onDelete: () => _confirmAndDelete(context, item),
         onTap: () {
           showItemDetailSheet(
             context: context,

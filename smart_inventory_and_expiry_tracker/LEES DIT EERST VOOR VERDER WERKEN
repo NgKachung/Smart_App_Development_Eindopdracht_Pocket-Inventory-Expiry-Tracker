@@ -1,1 +1,6 @@
 Nu is ben je geconnecteerd met een firestore database. Dus je kan producten zien afhankelijk van met welk account je ingelogd bent
+
+
+Volgende stap is 
+"eerst add + Firestore” stabiel maken, daarna “OpenFoodFacts autofill”, daarna “QR/barcode scan”. 
+Dat is de juiste architectuur en het minste risico."
