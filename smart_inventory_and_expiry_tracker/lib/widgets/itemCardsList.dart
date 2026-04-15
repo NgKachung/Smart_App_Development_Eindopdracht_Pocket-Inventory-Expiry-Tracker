@@ -15,6 +15,52 @@ class ItemCardsList extends StatefulWidget {
 class _ItemCardsListState extends State<ItemCardsList> {
   final FirestoreInventoryService _inventoryService = FirestoreInventoryService();
 
+  Future<void> _confirmAndDelete(BuildContext context, InventoryItem item) async {
+    final shouldDelete = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (dialogContext) => CupertinoAlertDialog(
+        title: const Text('Verwijderen?'),
+        content: Text('Weet je zeker dat je "${item.title}" wilt verwijderen?'),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Annuleren'),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Verwijderen'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete != true) {
+      return;
+    }
+
+    try {
+      await _inventoryService.deleteItem(item.id);
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      await showCupertinoDialog<void>(
+        context: context,
+        builder: (dialogContext) => CupertinoAlertDialog(
+          title: const Text('Verwijderen mislukt'),
+          content: Text('Kon item niet verwijderen.\n$e'),
+          actions: [
+            CupertinoDialogAction(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
   String _statusLabelForItem(InventoryItem item) {
     if (item.isExpired) {
       return 'EXPIRED';
@@ -49,6 +95,7 @@ class _ItemCardsListState extends State<ItemCardsList> {
         statusColor: statusColor,
         borderColor: item.isExpired ? const Color(0xFFD32F2F) : null,
         stockCount: item.stockCount,
+        onDelete: () => _confirmAndDelete(context, item),
         onTap: () {
           showItemDetailSheet(
             context: context,

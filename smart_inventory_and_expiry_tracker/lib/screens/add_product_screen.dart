@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import '../services/firestore_inventory_service.dart';
+
 /// Manual product add screen. Uses the app's Cupertino styling.
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({super.key});
@@ -10,8 +12,11 @@ class AddProductScreen extends StatefulWidget {
 }
 
 class _AddProductScreenState extends State<AddProductScreen> {
+  final FirestoreInventoryService _inventoryService = FirestoreInventoryService();
+
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _subtitleController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _imageUrlController = TextEditingController();
   final TextEditingController _stockController = TextEditingController();
   // OpenFoodFacts related fields
@@ -22,11 +27,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   // status is derived automatically from the expiry date
   DateTime? _expiryDate;
+  bool _isSaving = false;
 
   @override
   void dispose() {
     _titleController.dispose();
     _subtitleController.dispose();
+    _descriptionController.dispose();
     _imageUrlController.dispose();
     _stockController.dispose();
     _barcodeController.dispose();
@@ -60,49 +67,69 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
-  void _save() {
+  Future<void> _save() async {
+    if (_isSaving) {
+      return;
+    }
+
     final title = _titleController.text.trim();
     final subtitle = _subtitleController.text.trim();
-    final imageUrl = _imageUrlController.text.trim().isEmpty ? null : _imageUrlController.text.trim();
-    final stock = int.tryParse(_stockController.text.trim()) ?? 0;
+    final description = _descriptionController.text.trim();
+    final imageUrl = _imageUrlController.text.trim();
+    final stockCount = int.tryParse(_stockController.text.trim()) ?? 0;
 
-    final barcode = _barcodeController.text.trim().isEmpty ? null : _barcodeController.text.trim();
-    final brand = _brandController.text.trim().isEmpty ? null : _brandController.text.trim();
-    final quantity = _quantityController.text.trim().isEmpty ? null : _quantityController.text.trim();
-    // packaging / ingredients / nutrition removed
+    final barcode = _barcodeController.text.trim();
+    final brand = _brandController.text.trim();
+    final quantity = _quantityController.text.trim();
 
-    if (title.isEmpty || _expiryDate == null) {
+    if (title.isEmpty || description.isEmpty || _expiryDate == null) {
       showCupertinoDialog(
         context: context,
         builder: (_) => CupertinoAlertDialog(
           title: const Text('Validation'),
-          content: const Text('Please provide a title and an expiry date.'),
+          content: const Text('Please provide a title, description and an expiry date.'),
           actions: [CupertinoDialogAction(child: const Text('OK'), onPressed: () => Navigator.of(context).pop())],
         ),
       );
       return;
     }
 
-    // Derive status from expiry date
-    final now = DateTime.now();
-    final daysToExpiry = _expiryDate!.difference(now).inDays;
-    final String status = daysToExpiry < 0
-        ? 'EXPIRED'
-        : (daysToExpiry <= 7 ? 'USE SOON' : 'FRESH');
+    setState(() => _isSaving = true);
 
-    // Return the created product as a Map so callers can insert it into lists.
-    final product = {
-      'barcode': barcode,
-      'product_name': title,
-      'brands': brand,
-      'quantity': quantity,
-      'image_url': imageUrl,
-      'status': status,
-      'stock': stock,
-      'expiry_date': _expiryDate!.toIso8601String(),
-    };
+    try {
+      await _inventoryService.addItem(
+        title: title,
+        subtitle: subtitle,
+        description: description,
+        expiryDate: _expiryDate!,
+        stockCount: stockCount,
+        barcode: barcode,
+        brand: brand,
+        quantity: quantity,
+        imageUrl: imageUrl,
+      );
 
-    Navigator.of(context).pop(product);
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      showCupertinoDialog(
+        context: context,
+        builder: (_) => CupertinoAlertDialog(
+          title: const Text('Save failed'),
+          content: Text('Could not save product to Firestore.\n$e'),
+          actions: [CupertinoDialogAction(child: const Text('OK'), onPressed: () => Navigator.of(context).pop())],
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 
   @override
@@ -122,6 +149,15 @@ class _AddProductScreenState extends State<AddProductScreen> {
             const Text('Short description', style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             CupertinoTextField(controller: _subtitleController, placeholder: 'Short subtitle'),
+            const SizedBox(height: 16),
+
+            const Text('Description', style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            CupertinoTextField(
+              controller: _descriptionController,
+              placeholder: 'Full product description',
+              maxLines: 4,
+            ),
             const SizedBox(height: 16),
 
             const Text('Image URL (optional)', style: TextStyle(fontWeight: FontWeight.w600)),
@@ -180,7 +216,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
             const SizedBox(height: 32),
                 const SizedBox(height: 8),
                 GestureDetector(
-                  onTap: _save,
+                  onTap: _isSaving ? null : _save,
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -189,8 +225,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       borderRadius: BorderRadius.circular(8),
                       boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3))],
                     ),
-                    child: const Center(
-                      child: Text('Save product', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                    child: Center(
+                      child: _isSaving
+                          ? const CupertinoActivityIndicator(color: Colors.white)
+                          : const Text('Save product', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ),
