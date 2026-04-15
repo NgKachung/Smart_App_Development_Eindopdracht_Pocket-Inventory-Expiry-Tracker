@@ -78,4 +78,35 @@ class FirestoreInventoryService {
       'updatedAt': now,
     });
   }
+
+  Future<void> updateItem({
+    required String id,
+    required String title,
+    required String subtitle,
+    required String description,
+    required DateTime expiryDate,
+    required int stockCount,
+    required String barcode,
+    required String brand,
+    required String quantity,
+    required String imageUrl,
+  }) {
+    final collection = _itemsCollection;
+    if (collection == null) {
+      throw StateError('No signed-in user found.');
+    }
+
+    return collection.doc(id).update({
+      'title': title,
+      'subtitle': subtitle,
+      'description': description,
+      'expiryDate': expiryDate,
+      'stockCount': stockCount,
+      'barcode': barcode,
+      'brand': brand,
+      'quantity': quantity,
+      'imageUrl': imageUrl,
+      'updatedAt': DateTime.now(),
+    });
+  }
 }

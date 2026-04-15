@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../models/inventory_item.dart';
+import '../screens/edit_product_screen.dart';
 import '../services/firestore_inventory_service.dart';
 import 'itemCard.dart';
 import 'item_detail_sheet.dart';
@@ -75,6 +76,11 @@ class ExpirationList extends StatelessWidget {
             imageUrl: item.imageUrl,
             stockCount: item.stockCount,
             expiryDate: item.expiryDate,
+            onEdit: () async {
+              await Navigator.of(context).push(
+                CupertinoPageRoute(builder: (_) => EditProductScreen(item: item)),
+              );
+            },
           );
         },
       ),

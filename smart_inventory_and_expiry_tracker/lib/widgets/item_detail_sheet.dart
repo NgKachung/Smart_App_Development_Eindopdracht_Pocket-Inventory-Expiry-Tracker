@@ -8,6 +8,7 @@ Future<void> showItemDetailSheet({
   String? imageUrl,
   required int stockCount,
   required DateTime expiryDate,
+  Future<void> Function()? onEdit,
 }) async {
   final now = DateTime.now();
   final daysDiff = expiryDate.difference(DateTime(now.year, now.month, now.day)).inDays;
@@ -116,6 +117,30 @@ Future<void> showItemDetailSheet({
               ),
             ),
             const SizedBox(height: 8),
+
+            if (onEdit != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: GestureDetector(
+                  onTap: () async {
+                    Navigator.of(ctx).pop();
+                    await onEdit();
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade700,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'Edit',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       );
