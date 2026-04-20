@@ -12,6 +12,7 @@ class ItemCard extends StatelessWidget {
   final VoidCallback? onTap;
   final Color? backgroundColor;
   final Color? borderColor;
+  final Color? deleteButtonColor;
 
   const ItemCard({
     super.key,
@@ -25,6 +26,7 @@ class ItemCard extends StatelessWidget {
     this.onTap,
     this.backgroundColor,
     this.borderColor,
+    this.deleteButtonColor,
   });
 
   @override
@@ -59,7 +61,7 @@ class ItemCard extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: imageUrl != null
-                    ? Image.network(imageUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(CupertinoIcons.photo))
+                    ? Image.network(imageUrl!, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(CupertinoIcons.photo))
                     : const Icon(CupertinoIcons.photo, size: 40, color: Colors.grey),
               ),
             ),
@@ -115,7 +117,7 @@ class ItemCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: Colors.green.shade700,
+                  color: deleteButtonColor ?? Colors.green.shade700,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(CupertinoIcons.delete, color: Colors.white, size: 20),

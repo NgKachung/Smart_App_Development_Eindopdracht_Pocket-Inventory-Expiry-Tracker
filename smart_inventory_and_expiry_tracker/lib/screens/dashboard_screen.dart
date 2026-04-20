@@ -17,6 +17,7 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
+  String _searchQuery = '';
 
   // Logout helper removed (not referenced). Use AuthService().signOut() where needed.
 
@@ -30,9 +31,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       navigationBar: CupertinoTopNavigationBar(
         title: navTitle,
         showSearch: _selectedIndex == 0,
-        onSearch: _selectedIndex == 0 ? (query) {
-          // TODO: pass search query to cards list when implemented
-        } : null,
+        onSearch: (query) {
+          setState(() => _searchQuery = query);
+        },
       ),
       child: Stack(
         children: [
@@ -46,7 +47,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       // Dashboard (cards list)
                       SingleChildScrollView(
                         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                        child: Column(children: const [ItemCardsList()]),
+                        child: Column(children: [ItemCardsList(searchQuery: _searchQuery)]),
                       ),
 
                       // Expiration: show only soon-to-expire cards
@@ -65,7 +66,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               // Bottom navigation bar
               AppBottomNavigationBar(
                 currentIndex: _selectedIndex,
-                onTap: (i) => setState(() => _selectedIndex = i),
+                onTap: (i) => setState(() {
+                  _selectedIndex = i;
+                  if (i != 0) {
+                    _searchQuery = '';
+                  }
+                }),
               ),
             ],
           ),

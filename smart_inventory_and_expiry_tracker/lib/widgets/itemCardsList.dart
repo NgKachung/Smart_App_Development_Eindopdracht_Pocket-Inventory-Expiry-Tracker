@@ -7,7 +7,12 @@ import 'itemCard.dart';
 import 'item_detail_sheet.dart';
 
 class ItemCardsList extends StatefulWidget {
-  const ItemCardsList({super.key});
+  const ItemCardsList({
+    super.key,
+    this.searchQuery = '',
+  });
+
+  final String searchQuery;
 
   @override
   State<ItemCardsList> createState() => _ItemCardsListState();
@@ -15,6 +20,24 @@ class ItemCardsList extends StatefulWidget {
 
 class _ItemCardsListState extends State<ItemCardsList> {
   final FirestoreInventoryService _inventoryService = FirestoreInventoryService();
+
+  bool _matchesSearch(InventoryItem item, String searchQuery) {
+    final q = searchQuery.trim().toLowerCase();
+    if (q.isEmpty) {
+      return true;
+    }
+
+    final haystack = <String>[
+      item.title,
+      item.subtitle,
+      item.description,
+      item.brand ?? '',
+      item.quantity ?? '',
+      item.barcode ?? '',
+    ].join(' ').toLowerCase();
+
+    return haystack.contains(q);
+  }
 
   Future<void> _confirmAndDelete(BuildContext context, InventoryItem item) async {
     final shouldDelete = await showCupertinoDialog<bool>(
@@ -94,7 +117,9 @@ class _ItemCardsListState extends State<ItemCardsList> {
         imageUrl: item.imageUrl,
         statusLabel: statusLabel,
         statusColor: statusColor,
-        borderColor: item.isExpired ? const Color(0xFFD32F2F) : null,
+        backgroundColor: item.isExpired ? const Color(0xFFFFF0F0) : null,
+        borderColor: item.isExpired ? const Color(0xFFE57373) : null,
+        deleteButtonColor: item.isExpired ? const Color(0xFFE57373) : null,
         stockCount: item.stockCount,
         onDelete: () => _confirmAndDelete(context, item),
         onTap: () {
@@ -138,13 +163,18 @@ class _ItemCardsListState extends State<ItemCardsList> {
           );
         }
 
-        final items = snapshot.data ?? const <InventoryItem>[];
+        final allItems = snapshot.data ?? const <InventoryItem>[];
+        final items = allItems
+            .where((item) => _matchesSearch(item, widget.searchQuery))
+            .toList(growable: false);
 
         if (items.isEmpty) {
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 20.0),
             child: Text(
-              'Geen producten gevonden voor dit account.',
+              widget.searchQuery.trim().isEmpty
+                  ? 'Geen producten gevonden voor dit account.'
+                  : 'Geen producten gevonden voor "${widget.searchQuery}".',
               style: TextStyle(color: Colors.grey.shade700),
             ),
           );

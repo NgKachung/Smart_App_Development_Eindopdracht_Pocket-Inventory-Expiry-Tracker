@@ -1,11 +1,31 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 import '../services/firestore_inventory_service.dart';
+import '../services/open_food_facts_service.dart';
 
 /// Manual product add screen. Uses the app's Cupertino styling.
 class AddProductScreen extends StatefulWidget {
-  const AddProductScreen({super.key});
+  const AddProductScreen({
+    super.key,
+    this.prefilledTitle,
+    this.prefilledSubtitle,
+    this.prefilledDescription,
+    this.prefilledImageUrl,
+    this.prefilledBrand,
+    this.prefilledQuantity,
+    this.prefilledBarcode,
+  });
+
+  final String? prefilledTitle;
+  final String? prefilledSubtitle;
+  final String? prefilledDescription;
+  final String? prefilledImageUrl;
+  final String? prefilledBrand;
+  final String? prefilledQuantity;
+  final String? prefilledBarcode;
 
   @override
   State<AddProductScreen> createState() => _AddProductScreenState();
@@ -13,6 +33,8 @@ class AddProductScreen extends StatefulWidget {
 
 class _AddProductScreenState extends State<AddProductScreen> {
   final FirestoreInventoryService _inventoryService = FirestoreInventoryService();
+  final OpenFoodFactsService _openFoodFactsService = OpenFoodFactsService();
+  final ImagePicker _imagePicker = ImagePicker();
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _subtitleController = TextEditingController();
@@ -23,11 +45,27 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final TextEditingController _barcodeController = TextEditingController();
   final TextEditingController _brandController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
-  // (packaging, ingredients and nutrition removed — not needed for manual add)
 
   // status is derived automatically from the expiry date
   DateTime? _expiryDate;
   bool _isSaving = false;
+  bool _isFetchingOpenFoodFacts = false;
+  bool _hasOpenFoodFactsData = false;
+  File? _selectedImage;
+
+  @override
+  void initState() {
+    super.initState();
+    // Prefill with data if provided
+    if (widget.prefilledTitle != null) _titleController.text = widget.prefilledTitle!;
+    if (widget.prefilledSubtitle != null) _subtitleController.text = widget.prefilledSubtitle!;
+    if (widget.prefilledDescription != null) _descriptionController.text = widget.prefilledDescription!;
+    if (widget.prefilledImageUrl != null) _imageUrlController.text = widget.prefilledImageUrl!;
+    if (widget.prefilledBrand != null) _brandController.text = widget.prefilledBrand!;
+    if (widget.prefilledQuantity != null) _quantityController.text = widget.prefilledQuantity!;
+    if (widget.prefilledBarcode != null) _barcodeController.text = widget.prefilledBarcode!;
+    if (widget.prefilledTitle != null) _hasOpenFoodFactsData = true;
+  }
 
   @override
   void dispose() {
@@ -107,12 +145,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
         brand: brand,
         quantity: quantity,
         imageUrl: imageUrl,
+        source: _hasOpenFoodFactsData ? 'openfoodfacts' : 'manual',
       );
 
       if (!mounted) {
         return;
       }
-      Navigator.of(context).pop(true);
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {
       if (!mounted) {
         return;
@@ -132,6 +171,95 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
   }
 
+  Future<void> _fetchProductFromBarcode() async {
+    if (_isFetchingOpenFoodFacts || _isSaving) {
+      return;
+    }
+
+    final barcode = _barcodeController.text.trim();
+    if (barcode.isEmpty) {
+      showCupertinoDialog(
+        context: context,
+        builder: (_) => CupertinoAlertDialog(
+          title: const Text('Barcode nodig'),
+          content: const Text('Voer eerst een barcode in om gegevens op te halen.'),
+          actions: [CupertinoDialogAction(child: const Text('OK'), onPressed: () => Navigator.of(context).pop())],
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isFetchingOpenFoodFacts = true);
+
+    try {
+      final product = await _openFoodFactsService.fetchProductByBarcode(barcode);
+
+      if (!mounted) {
+        return;
+      }
+
+      if (product == null) {
+        showCupertinoDialog(
+          context: context,
+          builder: (_) => CupertinoAlertDialog(
+            title: const Text('Niet gevonden'),
+            content: const Text('Geen product gevonden op OpenFoodFacts voor deze barcode.'),
+            actions: [CupertinoDialogAction(child: const Text('OK'), onPressed: () => Navigator.of(context).pop())],
+          ),
+        );
+        return;
+      }
+
+      _titleController.text = product.title;
+      _subtitleController.text = product.subtitle;
+      _descriptionController.text = product.description;
+      _imageUrlController.text = product.imageUrl ?? '';
+      _brandController.text = product.brand ?? '';
+      _quantityController.text = product.quantity ?? '';
+
+      setState(() => _hasOpenFoodFactsData = true);
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      showCupertinoDialog(
+        context: context,
+        builder: (_) => CupertinoAlertDialog(
+          title: const Text('OpenFoodFacts fout'),
+          content: Text('Kon productgegevens niet ophalen.\n$e'),
+          actions: [CupertinoDialogAction(child: const Text('OK'), onPressed: () => Navigator.of(context).pop())],
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isFetchingOpenFoodFacts = false);
+      }
+    }
+  }
+
+  Future<void> _pickImageFromGallery() async {
+    try {
+      final pickedFile = await _imagePicker.pickImage(source: ImageSource.gallery);
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        showCupertinoDialog(
+          context: context,
+          builder: (_) => CupertinoAlertDialog(
+            title: const Text('Fout'),
+            content: Text('Kon foto niet selecteren.\n$e'),
+            actions: [CupertinoDialogAction(child: const Text('OK'), onPressed: () => Navigator.of(context).pop())],
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
@@ -141,6 +269,57 @@ class _AddProductScreenState extends State<AddProductScreen> {
           padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const SizedBox(height: 8),
+            
+            // Image preview section
+            const Text('Foto', style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: _pickImageFromGallery,
+              child: Container(
+                width: double.infinity,
+                height: 200,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade300, width: 2),
+                ),
+                child: _selectedImage != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.file(_selectedImage!, fit: BoxFit.cover),
+                      )
+                    : (_imageUrlController.text.isNotEmpty
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.network(
+                              _imageUrlController.text,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(CupertinoIcons.photo, size: 48, color: Colors.grey.shade400),
+                                    const SizedBox(height: 8),
+                                    Text('Tap om foto te selecteren', style: TextStyle(color: Colors.grey.shade500)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )
+                        : Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(CupertinoIcons.photo, size: 48, color: Colors.grey.shade400),
+                                const SizedBox(height: 8),
+                                Text('Tap om foto te selecteren', style: TextStyle(color: Colors.grey.shade500)),
+                              ],
+                            ),
+                          )),
+              ),
+            ),
+            const SizedBox(height: 16),
+            
             const Text('Title', style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             CupertinoTextField(controller: _titleController, placeholder: 'Product name'),
@@ -168,6 +347,26 @@ class _AddProductScreenState extends State<AddProductScreen> {
             const Text('Barcode (EAN/GTIN)', style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             CupertinoTextField(controller: _barcodeController, placeholder: 'e.g. 8712100876543', keyboardType: TextInputType.number),
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: (_isFetchingOpenFoodFacts || _isSaving) ? null : _fetchProductFromBarcode,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: (_isFetchingOpenFoodFacts || _isSaving) ? Colors.grey.shade400 : Colors.blue.shade700,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: _isFetchingOpenFoodFacts
+                      ? const CupertinoActivityIndicator(color: Colors.white)
+                      : const Text(
+                          'Haal product op via OpenFoodFacts',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                        ),
+                ),
+              ),
+            ),
             const SizedBox(height: 16),
 
             const Text('Brand', style: TextStyle(fontWeight: FontWeight.w600)),
