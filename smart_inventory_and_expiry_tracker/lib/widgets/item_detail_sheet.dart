@@ -65,18 +65,28 @@ Future<void> showItemDetailSheet({
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    if (imageUrl != null && imageUrl.isNotEmpty)
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.network(imageUrl, width: 120, height: 120, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(CupertinoIcons.photo)),
+                    Container(
+                      width: 180,
+                      height: 180,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                    if (imageUrl == null || imageUrl.isEmpty)
-                      Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
-                        child: const Icon(CupertinoIcons.photo, size: 56, color: Colors.grey),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: imageUrl != null && imageUrl.isNotEmpty
+                            ? Image.network(
+                                imageUrl,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => const Center(
+                                  child: Icon(CupertinoIcons.photo, size: 56, color: Colors.grey),
+                                ),
+                              )
+                            : const Center(
+                                child: Icon(CupertinoIcons.photo, size: 56, color: Colors.grey),
+                              ),
                       ),
+                    ),
 
                     const SizedBox(height: 40),
                     Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),

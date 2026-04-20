@@ -8,15 +8,61 @@ class OpenFoodFactsProduct {
     required this.subtitle,
     required this.description,
     required this.imageUrl,
+    this.barcode,
+    this.brand,
+    this.quantity,
   });
 
   final String title;
   final String subtitle;
   final String description;
   final String? imageUrl;
+  final String? barcode;
+  final String? brand;
+  final String? quantity;
 }
 
 class OpenFoodFactsService {
+  Future<OpenFoodFactsProduct?> fetchProductByBarcode(String barcode) async {
+    final normalizedBarcode = barcode.trim();
+    if (normalizedBarcode.isEmpty) {
+      return null;
+    }
+
+    final uri = Uri.https(
+      'world.openfoodfacts.org',
+      '/api/v2/product/$normalizedBarcode.json',
+      <String, String>{
+        'fields': 'product_name,brands,quantity,generic_name,image_front_small_url,code',
+      },
+    );
+
+    final response = await http.get(
+      uri,
+      headers: const {
+        'User-Agent': 'smart_inventory_and_expiry_tracker/1.0',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('OpenFoodFacts request failed with status ${response.statusCode}.');
+    }
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final status = decoded['status'];
+    if (status is int && status != 1) {
+      return null;
+    }
+
+    final product = decoded['product'];
+    if (product is! Map<String, dynamic>) {
+      return null;
+    }
+
+    return _mapProduct(product);
+  }
+
   Future<List<OpenFoodFactsProduct>> fetchFeaturedProducts() async {
     final uri = Uri.https(
       'world.openfoodfacts.org',
@@ -86,6 +132,9 @@ class OpenFoodFactsService {
       subtitle: subtitle,
       description: description,
       imageUrl: json['image_front_small_url'] as String?,
+      barcode: (json['code'] as String?)?.trim(),
+      brand: brands,
+      quantity: quantity,
     );
   }
 

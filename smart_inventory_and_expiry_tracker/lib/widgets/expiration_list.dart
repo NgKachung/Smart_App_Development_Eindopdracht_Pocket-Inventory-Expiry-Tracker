@@ -65,7 +65,7 @@ class ExpirationList extends StatelessWidget {
         imageUrl: item.imageUrl,
         statusLabel: item.isExpired ? 'EXPIRED' : 'USE SOON',
         statusColor: item.isExpired ? const Color(0xFFFFE6E6) : const Color(0xFFF7D9BD),
-        borderColor: item.isExpired ? const Color(0xFFD32F2F) : null,
+        backgroundColor: item.isExpired ? const Color(0xFFFAF9F9) : null,
         stockCount: item.stockCount,
         onDelete: () => _confirmAndDelete(context, item),
         onTap: () {
