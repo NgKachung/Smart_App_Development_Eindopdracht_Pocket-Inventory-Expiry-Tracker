@@ -1,6 +1,6 @@
-import 'package:camera/camera.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../services/open_food_facts_service.dart';
 import 'add_product_screen.dart';
 
@@ -12,34 +12,119 @@ class CameraScreen extends StatefulWidget {
 }
 
 class _CameraScreenState extends State<CameraScreen> {
-  CameraController? _controller;
-  bool _isReady = false;
-  String? _error;
+  final MobileScannerController _scannerController = MobileScannerController(
+    detectionSpeed: DetectionSpeed.noDuplicates,
+    facing: CameraFacing.back,
+  );
+  bool _isHandlingScan = false;
+  bool _isLoadingProduct = false;
   final OpenFoodFactsService _openFoodFactsService = OpenFoodFactsService();
 
   @override
-  void initState() {
-    super.initState();
-    _initCamera();
+  void dispose() {
+    _scannerController.dispose();
+    super.dispose();
   }
 
-  Future<void> _initCamera() async {
+  Future<void> _processBarcode(String barcode) async {
+    final normalized = barcode.trim();
+    if (normalized.isEmpty || _isLoadingProduct) {
+      return;
+    }
+
+    setState(() => _isLoadingProduct = true);
     try {
-      final cameras = await availableCameras();
-      if (cameras.isEmpty) throw Exception('No cameras available');
-      _controller = CameraController(cameras.first, ResolutionPreset.medium, enableAudio: false);
-      await _controller!.initialize();
+      final product = await _openFoodFactsService.fetchProductByBarcode(normalized);
+
       if (!mounted) return;
-      setState(() => _isReady = true);
+
+      if (product == null) {
+        await showCupertinoDialog<void>(
+          context: context,
+          builder: (ctx) => CupertinoAlertDialog(
+            title: const Text('Niet gevonden'),
+            content: const Text('Geen product gevonden op OpenFoodFacts. Je kunt het handmatig toevoegen.'),
+            actions: [
+              CupertinoDialogAction(
+                child: const Text('OK'),
+                onPressed: () => Navigator.of(ctx).pop(),
+              ),
+            ],
+          ),
+        );
+
+        if (mounted) {
+          await Navigator.of(context).push(
+            CupertinoPageRoute(
+              builder: (_) => AddProductScreen(prefilledBarcode: normalized),
+            ),
+          );
+        }
+      } else {
+        await Navigator.of(context).push(
+          CupertinoPageRoute(
+            builder: (_) => AddProductScreen(
+              prefilledTitle: product.title,
+              prefilledSubtitle: product.subtitle,
+              prefilledDescription: product.description,
+              prefilledImageUrl: product.imageUrl,
+              prefilledBrand: product.brand,
+              prefilledQuantity: product.quantity,
+              prefilledBarcode: product.barcode,
+            ),
+          ),
+        );
+      }
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (!mounted) return;
+      await showCupertinoDialog<void>(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Fout'),
+          content: Text('Kon product niet ophalen.\n$e'),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.of(ctx).pop(),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingProduct = false);
+      }
     }
   }
 
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
+  Future<void> _onDetect(BarcodeCapture capture) async {
+    if (_isHandlingScan || _isLoadingProduct) {
+      return;
+    }
+
+    String? foundValue;
+    for (final code in capture.barcodes) {
+      final value = code.rawValue?.trim();
+      if (value != null && value.isNotEmpty) {
+        foundValue = value;
+        break;
+      }
+    }
+
+    if (foundValue == null) {
+      return;
+    }
+
+    _isHandlingScan = true;
+    try {
+      await _scannerController.stop();
+      await _processBarcode(foundValue);
+    } finally {
+      _isHandlingScan = false;
+      if (mounted) {
+        await _scannerController.start();
+      }
+    }
   }
 
   Future<void> _showBarcodeInputDialog() async {
@@ -156,36 +241,52 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      navigationBar: const CupertinoNavigationBar(
-        middle: Text('Scan QR'),
+      navigationBar: CupertinoNavigationBar(
+        middle: const Text('Scan barcode'),
+        trailing: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: _showBarcodeInputDialog,
+          child: const Icon(CupertinoIcons.keyboard),
+        ),
       ),
       child: SafeArea(
-        child: _error != null
-            ? Center(child: Text('Camera error: $_error'))
-            : (_isReady && _controller != null)
-                ? Stack(
-                    children: [
-                      Center(child: CameraPreview(_controller!)),
-                      Positioned(
-                        right: 18,
-                        bottom: 24,
-                        child: GestureDetector(
-                          onTap: _showBarcodeInputDialog,
-                          child: Container(
-                            width: 56,
-                            height: 56,
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade700,
-                              shape: BoxShape.circle,
-                              boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3))],
-                            ),
-                            child: const Icon(CupertinoIcons.add, color: Colors.white, size: 28),
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                : const Center(child: CupertinoActivityIndicator()),
+        child: Stack(
+          children: [
+            MobileScanner(
+              controller: _scannerController,
+              onDetect: _onDetect,
+              errorBuilder: (context, error, child) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Text('Camera error: $error', textAlign: TextAlign.center),
+                  ),
+                );
+              },
+            ),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'Richt de camera op een barcode\nof gebruik het toetsenbordicoon rechtsboven.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+            if (_isLoadingProduct)
+              Container(
+                color: Colors.black.withOpacity(0.3),
+                child: const Center(child: CupertinoActivityIndicator(radius: 16)),
+              ),
+          ],
+        ),
       ),
     );
   }
