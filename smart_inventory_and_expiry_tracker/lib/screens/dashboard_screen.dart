@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../providers/inventory_filter_provider.dart';
 import '../widgets/bottom_navigation_bar.dart';
 import '../widgets/itemCardsList.dart';
 import '../widgets/expiration_list.dart';
@@ -8,14 +10,14 @@ import 'profile_screen.dart';
 import '../widgets/top_navigation_bar.dart';
 import 'camera_screen.dart';
 
-class DashboardScreen extends StatefulWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   int _selectedIndex = 0;
   String _searchQuery = '';
 
@@ -26,6 +28,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final navTitle = _selectedIndex == 2
         ? 'My profile'
         : (_selectedIndex == 1 ? 'Expiration' : 'Inventory');
+    final displayMode = ref.watch(inventoryDisplayModeProvider);
 
     return CupertinoPageScaffold(
       navigationBar: CupertinoTopNavigationBar(
@@ -47,7 +50,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       // Dashboard (cards list)
                       SingleChildScrollView(
                         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                        child: Column(children: [ItemCardsList(searchQuery: _searchQuery)]),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12.0),
+                              child: CupertinoSlidingSegmentedControl<InventoryDisplayMode>(
+                                groupValue: displayMode,
+                                children: const {
+                                  InventoryDisplayMode.all: Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 8.0),
+                                    child: Text('All'),
+                                  ),
+                                  InventoryDisplayMode.expiringSoon: Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 8.0),
+                                    child: Text('Use soon'),
+                                  ),
+                                  InventoryDisplayMode.lowStock: Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 8.0),
+                                    child: Text('Low stock'),
+                                  ),
+                                },
+                                onValueChanged: (value) {
+                                  if (value == null) return;
+                                  ref.read(inventoryDisplayModeProvider.notifier).setMode(value);
+                                },
+                              ),
+                            ),
+                            ItemCardsList(searchQuery: _searchQuery),
+                          ],
+                        ),
                       ),
 
                       // Expiration: show only soon-to-expire cards
@@ -71,6 +103,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   if (i != 0) {
                     _searchQuery = '';
                   }
+                  ref.read(inventoryDisplayModeProvider.notifier).setMode(
+                        InventoryDisplayMode.all,
+                      );
                 }),
               ),
             ],
