@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 
 import '../services/firestore_inventory_service.dart';
+import '../services/image_storage_service.dart';
 import '../services/open_food_facts_service.dart';
 
 /// Manual product add screen. Uses the app's Cupertino styling.
@@ -33,6 +34,7 @@ class AddProductScreen extends StatefulWidget {
 
 class _AddProductScreenState extends State<AddProductScreen> {
   final FirestoreInventoryService _inventoryService = FirestoreInventoryService();
+  final ImageStorageService _imageStorageService = ImageStorageService();
   final OpenFoodFactsService _openFoodFactsService = OpenFoodFactsService();
   final ImagePicker _imagePicker = ImagePicker();
 
@@ -49,6 +51,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   // status is derived automatically from the expiry date
   DateTime? _expiryDate;
   bool _isSaving = false;
+  bool _isUploadingImage = false;
   bool _isFetchingOpenFoodFacts = false;
   bool _hasOpenFoodFactsData = false;
   File? _selectedImage;
@@ -113,7 +116,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final title = _titleController.text.trim();
     final subtitle = _subtitleController.text.trim();
     final description = _descriptionController.text.trim();
-    final imageUrl = _imageUrlController.text.trim();
+    final manualImageUrl = _imageUrlController.text.trim();
     final stockCount = int.tryParse(_stockController.text.trim()) ?? 0;
 
     final barcode = _barcodeController.text.trim();
@@ -135,6 +138,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
     setState(() => _isSaving = true);
 
     try {
+      var imageUrl = manualImageUrl;
+      if (_selectedImage != null) {
+        if (mounted) {
+          setState(() => _isUploadingImage = true);
+        }
+        imageUrl = await _imageStorageService.uploadProductImage(imageFile: _selectedImage!);
+      }
+
       await _inventoryService.addItem(
         title: title,
         subtitle: subtitle,
@@ -166,7 +177,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
       );
     } finally {
       if (mounted) {
-        setState(() => _isSaving = false);
+        setState(() {
+          _isSaving = false;
+          _isUploadingImage = false;
+        });
       }
     }
   }
@@ -238,9 +252,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
   }
 
-  Future<void> _pickImageFromGallery() async {
+  Future<void> _pickImage(ImageSource source) async {
     try {
-      final pickedFile = await _imagePicker.pickImage(source: ImageSource.gallery);
+      final pickedFile = await _imagePicker.pickImage(source: source, imageQuality: 85);
       if (pickedFile != null) {
         setState(() {
           _selectedImage = File(pickedFile.path);
@@ -260,6 +274,140 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
   }
 
+  Future<void> _showImageSourcePicker() async {
+    if (_isSaving || _isUploadingImage) {
+      return;
+    }
+
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (sheetContext) => CupertinoActionSheet(
+        title: const Text('Kies een foto'),
+        actions: [
+          CupertinoActionSheetAction(
+            onPressed: () async {
+              Navigator.of(sheetContext).pop();
+              await _pickImage(ImageSource.camera);
+            },
+            child: const Text('Neem foto'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () async {
+              Navigator.of(sheetContext).pop();
+              await _pickImage(ImageSource.gallery);
+            },
+            child: const Text('Kies uit galerij'),
+          ),
+          if (_selectedImage != null || _imageUrlController.text.trim().isNotEmpty)
+            CupertinoActionSheetAction(
+              isDestructiveAction: true,
+              onPressed: () {
+                Navigator.of(sheetContext).pop();
+                setState(() {
+                  _selectedImage = null;
+                  _imageUrlController.clear();
+                });
+              },
+              child: const Text('Verwijder foto'),
+            ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.of(sheetContext).pop(),
+          child: const Text('Annuleren'),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhotoPickerCard() {
+    final hasImage = _selectedImage != null || _imageUrlController.text.trim().isNotEmpty;
+
+    return GestureDetector(
+      onTap: _showImageSourcePicker,
+      child: Container(
+        width: double.infinity,
+        height: 170,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7F7F8),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFDCDDE1)),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(11),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: _isUploadingImage
+                    ? const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CupertinoActivityIndicator(),
+                            SizedBox(height: 8),
+                            Text('Foto uploaden...'),
+                          ],
+                        ),
+                      )
+                    : _selectedImage != null
+                        ? Image.file(_selectedImage!, fit: BoxFit.cover)
+                        : _imageUrlController.text.trim().isNotEmpty
+                            ? Image.network(
+                                _imageUrlController.text.trim(),
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _buildPhotoPickerPlaceholder(hasImage),
+                              )
+                            : _buildPhotoPickerPlaceholder(hasImage),
+              ),
+              Positioned(
+                right: 10,
+                top: 10,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xE6FFFFFF),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: const Color(0xFFCBD2D9)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(CupertinoIcons.hand_draw, size: 12, color: Color(0xFF5C6670)),
+                      SizedBox(width: 5),
+                      Text(
+                        'Tik',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF5C6670)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhotoPickerPlaceholder(bool hasImage) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            CupertinoIcons.camera,
+            size: 28,
+            color: Colors.grey.shade500,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            hasImage ? 'Tik om foto te wijzigen' : 'Tik om foto toe te voegen',
+            style: TextStyle(color: Colors.grey.shade700),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
@@ -273,51 +421,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
             // Image preview section
             const Text('Foto', style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
-            GestureDetector(
-              onTap: _pickImageFromGallery,
-              child: Container(
-                width: double.infinity,
-                height: 200,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade300, width: 2),
-                ),
-                child: _selectedImage != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Image.file(_selectedImage!, fit: BoxFit.cover),
-                      )
-                    : (_imageUrlController.text.isNotEmpty
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: Image.network(
-                              _imageUrlController.text,
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) => Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(CupertinoIcons.photo, size: 48, color: Colors.grey.shade400),
-                                    const SizedBox(height: 8),
-                                    Text('Tap om foto te selecteren', style: TextStyle(color: Colors.grey.shade500)),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          )
-                        : Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(CupertinoIcons.photo, size: 48, color: Colors.grey.shade400),
-                                const SizedBox(height: 8),
-                                Text('Tap om foto te selecteren', style: TextStyle(color: Colors.grey.shade500)),
-                              ],
-                            ),
-                          )),
-              ),
-            ),
+            _buildPhotoPickerCard(),
             const SizedBox(height: 16),
             
             const Text('Title', style: TextStyle(fontWeight: FontWeight.w600)),
@@ -415,12 +519,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
             const SizedBox(height: 32),
                 const SizedBox(height: 8),
                 GestureDetector(
-                  onTap: _isSaving ? null : _save,
+                  onTap: (_isSaving || _isUploadingImage) ? null : _save,
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     decoration: BoxDecoration(
-                      color: Colors.green.shade700,
+                      color: (_isSaving || _isUploadingImage) ? Colors.grey.shade400 : Colors.green.shade700,
                       borderRadius: BorderRadius.circular(8),
                       boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3))],
                     ),

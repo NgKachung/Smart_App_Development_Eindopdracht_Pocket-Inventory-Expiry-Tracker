@@ -241,13 +241,8 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(
-        middle: const Text('Scan barcode'),
-        trailing: CupertinoButton(
-          padding: EdgeInsets.zero,
-          onPressed: _showBarcodeInputDialog,
-          child: const Icon(CupertinoIcons.keyboard),
-        ),
+      navigationBar: const CupertinoNavigationBar(
+        middle: Text('Scan barcode'),
       ),
       child: SafeArea(
         child: Stack(
@@ -277,6 +272,25 @@ class _CameraScreenState extends State<CameraScreen> {
                   'Richt de camera op een barcode\nof gebruik het toetsenbordicoon rechtsboven.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 18,
+              bottom: 24,
+              child: GestureDetector(
+                onTap: _showBarcodeInputDialog,
+                child: Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade700,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
+                    ],
+                  ),
+                  child: const Icon(CupertinoIcons.keyboard, color: Colors.white, size: 26),
                 ),
               ),
             ),
