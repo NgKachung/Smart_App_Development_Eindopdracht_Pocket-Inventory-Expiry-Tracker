@@ -1,12 +1,14 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/inventory_item.dart';
+import '../providers/inventory_filter_provider.dart';
+import '../providers/inventory_items_provider.dart';
 import '../screens/edit_product_screen.dart';
-import '../services/firestore_inventory_service.dart';
 import 'itemCard.dart';
 import 'item_detail_sheet.dart';
 
-class ItemCardsList extends StatefulWidget {
+class ItemCardsList extends ConsumerStatefulWidget {
   const ItemCardsList({
     super.key,
     this.searchQuery = '',
@@ -15,12 +17,10 @@ class ItemCardsList extends StatefulWidget {
   final String searchQuery;
 
   @override
-  State<ItemCardsList> createState() => _ItemCardsListState();
+  ConsumerState<ItemCardsList> createState() => _ItemCardsListState();
 }
 
-class _ItemCardsListState extends State<ItemCardsList> {
-  final FirestoreInventoryService _inventoryService = FirestoreInventoryService();
-
+class _ItemCardsListState extends ConsumerState<ItemCardsList> {
   bool _matchesSearch(InventoryItem item, String searchQuery) {
     final q = searchQuery.trim().toLowerCase();
     if (q.isEmpty) {
@@ -37,6 +37,17 @@ class _ItemCardsListState extends State<ItemCardsList> {
     ].join(' ').toLowerCase();
 
     return haystack.contains(q);
+  }
+
+  bool _matchesDisplayMode(InventoryItem item, InventoryDisplayMode mode) {
+    switch (mode) {
+      case InventoryDisplayMode.all:
+        return true;
+      case InventoryDisplayMode.expiringSoon:
+        return item.isExpired || item.isUseSoon;
+      case InventoryDisplayMode.lowStock:
+        return item.stockCount <= 5;
+    }
   }
 
   Future<void> _confirmAndDelete(BuildContext context, InventoryItem item) async {
@@ -64,7 +75,7 @@ class _ItemCardsListState extends State<ItemCardsList> {
     }
 
     try {
-      await _inventoryService.deleteItem(item.id);
+      await ref.read(inventoryServiceProvider).deleteItem(item.id);
     } catch (e) {
       if (!mounted) {
         return;
@@ -143,29 +154,25 @@ class _ItemCardsListState extends State<ItemCardsList> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<InventoryItem>>(
-      stream: _inventoryService.watchAllItems(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 28.0),
-            child: Center(child: CupertinoActivityIndicator()),
-          );
-        }
+    final displayMode = ref.watch(inventoryDisplayModeProvider);
+    final itemsAsync = ref.watch(inventoryItemsProvider);
 
-        if (snapshot.hasError) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20.0),
-            child: Text(
-              'Firestore error: ${snapshot.error}',
-              style: TextStyle(color: Colors.grey.shade700),
-            ),
-          );
-        }
-
-        final allItems = snapshot.data ?? const <InventoryItem>[];
+    return itemsAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 28.0),
+        child: Center(child: CupertinoActivityIndicator()),
+      ),
+      error: (error, stackTrace) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20.0),
+        child: Text(
+          'Firestore error: $error',
+          style: TextStyle(color: Colors.grey.shade700),
+        ),
+      ),
+      data: (allItems) {
         final items = allItems
             .where((item) => _matchesSearch(item, widget.searchQuery))
+            .where((item) => _matchesDisplayMode(item, displayMode))
             .toList(growable: false);
 
         if (items.isEmpty) {
