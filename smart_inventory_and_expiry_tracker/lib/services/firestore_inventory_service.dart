@@ -62,6 +62,7 @@ class FirestoreInventoryService {
     }
 
     final now = DateTime.now();
+    final normalizedImageUrl = imageUrl.trim().isEmpty ? null : imageUrl.trim();
 
     return collection.add({
       'title': title,
@@ -72,7 +73,7 @@ class FirestoreInventoryService {
       'barcode': barcode,
       'brand': brand,
       'quantity': quantity,
-      'imageUrl': imageUrl,
+      'imageUrl': normalizedImageUrl,
       'source': source,
       'createdAt': now,
       'updatedAt': now,
@@ -96,6 +97,8 @@ class FirestoreInventoryService {
       throw StateError('No signed-in user found.');
     }
 
+    final normalizedImageUrl = imageUrl.trim().isEmpty ? null : imageUrl.trim();
+
     return collection.doc(id).update({
       'title': title,
       'subtitle': subtitle,
@@ -105,7 +108,7 @@ class FirestoreInventoryService {
       'barcode': barcode,
       'brand': brand,
       'quantity': quantity,
-      'imageUrl': imageUrl,
+      'imageUrl': normalizedImageUrl,
       'updatedAt': DateTime.now(),
     });
   }

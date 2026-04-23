@@ -1,8 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 import '../models/inventory_item.dart';
 import '../services/firestore_inventory_service.dart';
+import '../services/image_storage_service.dart';
 
 class EditProductScreen extends StatefulWidget {
   const EditProductScreen({
@@ -18,6 +21,8 @@ class EditProductScreen extends StatefulWidget {
 
 class _EditProductScreenState extends State<EditProductScreen> {
   final FirestoreInventoryService _inventoryService = FirestoreInventoryService();
+  final ImageStorageService _imageStorageService = ImageStorageService();
+  final ImagePicker _imagePicker = ImagePicker();
 
   late final TextEditingController _titleController;
   late final TextEditingController _subtitleController;
@@ -30,6 +35,9 @@ class _EditProductScreenState extends State<EditProductScreen> {
 
   late DateTime _expiryDate;
   bool _isSaving = false;
+  bool _isUploadingImage = false;
+  File? _selectedImage;
+  bool _removeExistingImage = false;
 
   @override
   void initState() {
@@ -94,7 +102,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
     final title = _titleController.text.trim();
     final subtitle = _subtitleController.text.trim();
     final description = _descriptionController.text.trim();
-    final imageUrl = _imageUrlController.text.trim();
+    final manualImageUrl = _imageUrlController.text.trim();
     final stockCount = int.tryParse(_stockController.text.trim()) ?? 0;
 
     final barcode = _barcodeController.text.trim();
@@ -121,6 +129,16 @@ class _EditProductScreenState extends State<EditProductScreen> {
     setState(() => _isSaving = true);
 
     try {
+      var imageUrl = manualImageUrl;
+      if (_selectedImage != null) {
+        if (mounted) {
+          setState(() => _isUploadingImage = true);
+        }
+        imageUrl = await _imageStorageService.uploadProductImage(imageFile: _selectedImage!);
+      } else if (_removeExistingImage) {
+        imageUrl = '';
+      }
+
       await _inventoryService.updateItem(
         id: widget.item.id,
         title: title,
@@ -157,9 +175,176 @@ class _EditProductScreenState extends State<EditProductScreen> {
       );
     } finally {
       if (mounted) {
-        setState(() => _isSaving = false);
+        setState(() {
+          _isSaving = false;
+          _isUploadingImage = false;
+        });
       }
     }
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final pickedFile = await _imagePicker.pickImage(source: source, imageQuality: 85);
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+          _removeExistingImage = false;
+        });
+      }
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      showCupertinoDialog(
+        context: context,
+        builder: (_) => CupertinoAlertDialog(
+          title: const Text('Fout'),
+          content: Text('Kon foto niet selecteren.\n$e'),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Future<void> _showImageSourcePicker() async {
+    if (_isSaving || _isUploadingImage) {
+      return;
+    }
+
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (sheetContext) => CupertinoActionSheet(
+        title: const Text('Kies een foto'),
+        actions: [
+          CupertinoActionSheetAction(
+            onPressed: () async {
+              Navigator.of(sheetContext).pop();
+              await _pickImage(ImageSource.camera);
+            },
+            child: const Text('Neem foto'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () async {
+              Navigator.of(sheetContext).pop();
+              await _pickImage(ImageSource.gallery);
+            },
+            child: const Text('Kies uit galerij'),
+          ),
+          if (_selectedImage != null || _imageUrlController.text.trim().isNotEmpty)
+            CupertinoActionSheetAction(
+              isDestructiveAction: true,
+              onPressed: () {
+                Navigator.of(sheetContext).pop();
+                setState(() {
+                  _selectedImage = null;
+                  _imageUrlController.clear();
+                  _removeExistingImage = true;
+                });
+              },
+              child: const Text('Verwijder foto'),
+            ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.of(sheetContext).pop(),
+          child: const Text('Annuleren'),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhotoPickerCard() {
+    final hasImage = _selectedImage != null || _imageUrlController.text.trim().isNotEmpty;
+
+    return GestureDetector(
+      onTap: _showImageSourcePicker,
+      child: Container(
+        width: double.infinity,
+        height: 170,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7F7F8),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFDCDDE1)),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(11),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: _isUploadingImage
+                    ? const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CupertinoActivityIndicator(),
+                            SizedBox(height: 8),
+                            Text('Foto uploaden...'),
+                          ],
+                        ),
+                      )
+                    : _selectedImage != null
+                        ? Image.file(_selectedImage!, fit: BoxFit.cover)
+                        : _imageUrlController.text.trim().isNotEmpty
+                            ? Image.network(
+                                _imageUrlController.text.trim(),
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _buildPhotoPickerPlaceholder(hasImage),
+                              )
+                            : _buildPhotoPickerPlaceholder(hasImage),
+              ),
+              Positioned(
+                right: 10,
+                top: 10,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xE6FFFFFF),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: const Color(0xFFCBD2D9)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(CupertinoIcons.hand_draw, size: 12, color: Color(0xFF5C6670)),
+                      SizedBox(width: 5),
+                      Text(
+                        'Tik',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF5C6670)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhotoPickerPlaceholder(bool hasImage) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            CupertinoIcons.camera,
+            size: 28,
+            color: Colors.grey.shade500,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            hasImage ? 'Tik om foto te wijzigen' : 'Tik om foto toe te voegen',
+            style: TextStyle(color: Colors.grey.shade700),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -173,6 +358,11 @@ class _EditProductScreenState extends State<EditProductScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 8),
+              const Text('Foto', style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              _buildPhotoPickerCard(),
+              const SizedBox(height: 16),
+
               const Text('Title', style: TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               CupertinoTextField(controller: _titleController, placeholder: 'Product name'),
@@ -248,12 +438,12 @@ class _EditProductScreenState extends State<EditProductScreen> {
               const SizedBox(height: 32),
               const SizedBox(height: 8),
               GestureDetector(
-                onTap: _isSaving ? null : _save,
+                onTap: (_isSaving || _isUploadingImage) ? null : _save,
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   decoration: BoxDecoration(
-                    color: Colors.green.shade700,
+                    color: (_isSaving || _isUploadingImage) ? Colors.grey.shade400 : Colors.green.shade700,
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3)),
