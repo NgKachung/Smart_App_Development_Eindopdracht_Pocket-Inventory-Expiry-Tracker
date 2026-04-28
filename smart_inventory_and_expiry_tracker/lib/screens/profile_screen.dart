@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
+import 'kitchen_display_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -56,6 +58,48 @@ class ProfileScreen extends StatelessWidget {
                     _InfoRow(label: 'User ID', value: accountId),
                     _InfoRow(label: 'Account created', value: createdAt),
                     _InfoRow(label: 'Last sign in', value: lastSignInAt),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _InfoCard(
+                  title: 'App modes',
+                  children: [
+                    const Text(
+                      'Switch to a specialized view for tablet or kitchen hub use.',
+                      style: TextStyle(fontSize: 14, color: CupertinoColors.systemGrey),
+                    ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          CupertinoPageRoute(
+                            builder: (context) => const KitchenDisplayScreen(),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.green.shade200),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(CupertinoIcons.square_grid_2x2, color: Colors.green.shade800),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Open Kitchen Mode',
+                              style: TextStyle(
+                                color: Colors.green.shade800,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
