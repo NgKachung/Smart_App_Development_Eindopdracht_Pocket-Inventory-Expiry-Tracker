@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
+import 'dart:io';
 
 import '../services/open_food_facts_service.dart';
 import 'add_product_screen.dart';
@@ -51,7 +52,7 @@ class _CameraScreenState extends State<CameraScreen> {
         enableAudio: false,
         imageFormatGroup: defaultTargetPlatform == TargetPlatform.iOS
             ? ImageFormatGroup.bgra8888
-            : ImageFormatGroup.yuv420,
+        : ImageFormatGroup.yuv420,
       );
 
       await controller.initialize();
@@ -110,9 +111,50 @@ class _CameraScreenState extends State<CameraScreen> {
 
   InputImage? _inputImageFromCameraImage(CameraImage image, CameraController controller) {
     final rotation = InputImageRotationValue.fromRawValue(controller.description.sensorOrientation);
-    final format = InputImageFormatValue.fromRawValue(image.format.raw);
+    if (rotation == null) {
+      return null;
+    }
 
-    if (rotation == null || format == null) {
+    if (Platform.isAndroid) {
+      final nv21Bytes = _androidCameraImageToNv21(image);
+      if (nv21Bytes == null) {
+        return null;
+      }
+
+      final metadata = InputImageMetadata(
+        size: Size(image.width.toDouble(), image.height.toDouble()),
+        rotation: rotation,
+        format: InputImageFormat.nv21,
+        bytesPerRow: image.width,
+      );
+
+      return InputImage.fromBytes(
+        bytes: nv21Bytes,
+        metadata: metadata,
+      );
+    }
+
+    if (Platform.isIOS) {
+      if (image.planes.length != 1) {
+        return null;
+      }
+
+      final plane = image.planes.first;
+      final metadata = InputImageMetadata(
+        size: Size(image.width.toDouble(), image.height.toDouble()),
+        rotation: rotation,
+        format: InputImageFormat.bgra8888,
+        bytesPerRow: plane.bytesPerRow,
+      );
+
+      return InputImage.fromBytes(
+        bytes: plane.bytes,
+        metadata: metadata,
+      );
+    }
+
+    final format = InputImageFormatValue.fromRawValue(image.format.raw);
+    if (format == null) {
       return null;
     }
 
@@ -132,6 +174,62 @@ class _CameraScreenState extends State<CameraScreen> {
       bytes: bytes.done().buffer.asUint8List(),
       metadata: metadata,
     );
+  }
+
+  Uint8List? _androidCameraImageToNv21(CameraImage image) {
+    if (image.planes.isEmpty) {
+      return null;
+    }
+
+    if (image.planes.length == 1) {
+      return image.planes.first.bytes;
+    }
+
+    if (image.planes.length < 3) {
+      return null;
+    }
+
+    final width = image.width;
+    final height = image.height;
+    final yPlane = image.planes[0];
+    final uPlane = image.planes[1];
+    final vPlane = image.planes[2];
+
+    final yBytes = yPlane.bytes;
+    final uBytes = uPlane.bytes;
+    final vBytes = vPlane.bytes;
+
+    final yRowStride = yPlane.bytesPerRow;
+    final yPixelStride = yPlane.bytesPerPixel ?? 1;
+    final uRowStride = uPlane.bytesPerRow;
+    final uPixelStride = uPlane.bytesPerPixel ?? 1;
+    final vRowStride = vPlane.bytesPerRow;
+    final vPixelStride = vPlane.bytesPerPixel ?? 1;
+
+    final output = Uint8List(width * height * 3 ~/ 2);
+    var outputOffset = 0;
+
+    for (var row = 0; row < height; row++) {
+      final rowOffset = row * yRowStride;
+      for (var col = 0; col < width; col++) {
+        output[outputOffset++] = yBytes[rowOffset + col * yPixelStride];
+      }
+    }
+
+    final chromaHeight = height ~/ 2;
+    final chromaWidth = width ~/ 2;
+    for (var row = 0; row < chromaHeight; row++) {
+      final uRowOffset = row * uRowStride;
+      final vRowOffset = row * vRowStride;
+      for (var col = 0; col < chromaWidth; col++) {
+        final uIndex = uRowOffset + col * uPixelStride;
+        final vIndex = vRowOffset + col * vPixelStride;
+        output[outputOffset++] = vBytes[vIndex];
+        output[outputOffset++] = uBytes[uIndex];
+      }
+    }
+
+    return output;
   }
 
   Future<void> _handleDetectedBarcode(String barcode) async {
@@ -359,7 +457,7 @@ class _CameraScreenState extends State<CameraScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Text(
-                  'Richt de camera op een barcode\nof gebruik het toetsenbordicoon rechtsboven.',
+                  'Richt de camera op een barcode\nof gebruik het toetsenbordicoon rechtsbeneden.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.white),
                 ),
@@ -367,7 +465,7 @@ class _CameraScreenState extends State<CameraScreen> {
             ),
             Positioned(
               right: 18,
-              bottom: 24,
+              bottom: 95,
               child: GestureDetector(
                 onTap: _showBarcodeInputDialog,
                 child: Container(

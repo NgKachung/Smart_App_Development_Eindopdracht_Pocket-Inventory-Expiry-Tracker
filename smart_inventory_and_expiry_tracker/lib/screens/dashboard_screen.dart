@@ -111,28 +111,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ],
           ),
 
-          // Floating QR button — always above bottom bar, bottom-right
-          Positioned(
-            right: 18,
-            bottom: 110,
-            child: GestureDetector(
-              onTap: () async {
-                // Open camera screen for QR scanning (implementation later)
-                if (!mounted) return;
-                Navigator.of(context).push(CupertinoPageRoute(builder: (_) => const CameraScreen()));
-              },
-              child: Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: Colors.green.shade700,
-                  shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3))],
+          if (_selectedIndex != 2)
+            // Floating QR button — shown on non-profile tabs, above bottom bar.
+            Positioned(
+              right: 18,
+              bottom: 110,
+              child: GestureDetector(
+                onTap: () async {
+                  // Open camera screen for QR scanning (implementation later)
+                  if (!mounted) return;
+                  Navigator.of(context).push(CupertinoPageRoute(builder: (_) => const CameraScreen()));
+                },
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade700,
+                    shape: BoxShape.circle,
+                    boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3))],
+                  ),
+                  child: const Icon(Icons.qr_code, color: Colors.white, size: 30),
                 ),
-                child: const Icon(Icons.qr_code, color: Colors.white, size: 30),
               ),
             ),
-          ),
         ],
       ),
     );

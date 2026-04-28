@@ -288,11 +288,11 @@ class _EditProductScreenState extends State<EditProductScreen> {
                         ),
                       )
                     : _selectedImage != null
-                        ? Image.file(_selectedImage!, fit: BoxFit.cover)
+                        ? Image.file(_selectedImage!, fit: BoxFit.contain)
                         : _imageUrlController.text.trim().isNotEmpty
                             ? Image.network(
                                 _imageUrlController.text.trim(),
-                                fit: BoxFit.cover,
+                                fit: BoxFit.contain,
                                 errorBuilder: (_, __, ___) => _buildPhotoPickerPlaceholder(hasImage),
                               )
                             : _buildPhotoPickerPlaceholder(hasImage),
