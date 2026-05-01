@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../providers/theme_provider.dart';
 
 typedef SearchCallback = void Function(String query);
 
@@ -62,14 +63,30 @@ class _CupertinoTopNavigationBarState extends State<CupertinoTopNavigationBar> {
 
   @override
   Widget build(BuildContext context) {
+    // Get brightness from CupertinoTheme to support system theme mode
+    final theme = CupertinoTheme.of(context);
+    final brightness = theme.brightness ?? Brightness.light;
+    final isDark = brightness == Brightness.dark;
+
     return CupertinoNavigationBar(
+      backgroundColor: isDark ? AppColors.darkCardBackground : AppColors.lightCardBackground,
+      border: Border(
+        bottom: BorderSide(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+          width: 0.5,
+        ),
+      ),
       leading: _isSearching
           ? null
           : Padding(
               padding: const EdgeInsets.only(left: 6.0),
               child: Text(
                 widget.title,
-                style: const TextStyle(fontSize: 20.0, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  fontSize: 20.0, 
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? AppColors.darkText : AppColors.lightText,
+                ),
               ),
             ),
       middle: _isSearching
@@ -80,6 +97,9 @@ class _CupertinoTopNavigationBarState extends State<CupertinoTopNavigationBar> {
                 placeholder: widget.placeholder,
                 onChanged: (v) => widget.onSearch?.call(v),
                 onSubmitted: (v) => widget.onSearch?.call(v),
+                style: TextStyle(color: isDark ? AppColors.darkText : AppColors.lightText),
+                placeholderStyle: TextStyle(color: isDark ? Colors.grey.shade500 : Colors.grey.shade400),
+                backgroundColor: isDark ? Colors.grey.shade900 : CupertinoColors.tertiarySystemFill,
               ),
             )
           : null,
@@ -87,11 +107,12 @@ class _CupertinoTopNavigationBarState extends State<CupertinoTopNavigationBar> {
           ? CupertinoButton(
               padding: EdgeInsets.zero,
               minSize: 0,
-              child: IconTheme(
-                data: const IconThemeData(color: CupertinoColors.black, size: 24),
-                child: Icon(_isSearching ? CupertinoIcons.clear : CupertinoIcons.search),
-              ),
               onPressed: _toggleSearch,
+              child: Icon(
+                _isSearching ? CupertinoIcons.clear : CupertinoIcons.search,
+                color: isDark ? AppColors.darkText : AppColors.lightText,
+                size: 24,
+              ),
             )
           : null,
     );

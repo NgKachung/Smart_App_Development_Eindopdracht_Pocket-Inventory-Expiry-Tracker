@@ -67,31 +67,44 @@ class _EditProductScreenState extends State<EditProductScreen> {
   }
 
   void _pickExpiryDate() {
-    showCupertinoModalPopup(
-      context: context,
-      builder: (_) => Container(
-        height: 300,
-        color: CupertinoColors.systemBackground.resolveFrom(context),
-        child: Column(
-          children: [
-            SizedBox(
-              height: 240,
-              child: CupertinoDatePicker(
-                mode: CupertinoDatePickerMode.date,
-                initialDateTime: _expiryDate,
-                minimumDate: DateTime(2000),
-                maximumDate: DateTime(2100),
-                onDateTimeChanged: (d) => setState(() => _expiryDate = d),
+    if (Platform.isIOS) {
+      showCupertinoModalPopup(
+        context: context,
+        builder: (_) => Container(
+          height: 300,
+          color: CupertinoColors.systemBackground.resolveFrom(context),
+          child: Column(
+            children: [
+              SizedBox(
+                height: 240,
+                child: CupertinoDatePicker(
+                  mode: CupertinoDatePickerMode.date,
+                  initialDateTime: _expiryDate,
+                  minimumDate: DateTime(2000),
+                  maximumDate: DateTime(2100),
+                  onDateTimeChanged: (d) => setState(() => _expiryDate = d),
+                ),
               ),
-            ),
-            CupertinoButton(
-              child: const Text('Done'),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ],
+              CupertinoButton(
+                child: const Text('Done'),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    } else {
+      showDatePicker(
+        context: context,
+        initialDate: _expiryDate,
+        firstDate: DateTime(2000),
+        lastDate: DateTime(2100),
+      ).then((selectedDate) {
+        if (selectedDate != null) {
+          setState(() => _expiryDate = selectedDate);
+        }
+      });
+    }
   }
 
   Future<void> _save() async {
@@ -110,13 +123,13 @@ class _EditProductScreenState extends State<EditProductScreen> {
     final quantity = _quantityController.text.trim();
 
     if (title.isEmpty || description.isEmpty) {
-      showCupertinoDialog(
+      showAdaptiveDialog(
         context: context,
-        builder: (_) => CupertinoAlertDialog(
+        builder: (context) => AlertDialog.adaptive(
           title: const Text('Validation'),
           content: const Text('Please provide a title and description.'),
           actions: [
-            CupertinoDialogAction(
+            TextButton(
               child: const Text('OK'),
               onPressed: () => Navigator.of(context).pop(),
             ),
@@ -160,13 +173,13 @@ class _EditProductScreenState extends State<EditProductScreen> {
       if (!mounted) {
         return;
       }
-      showCupertinoDialog(
+      showAdaptiveDialog(
         context: context,
-        builder: (_) => CupertinoAlertDialog(
+        builder: (context) => AlertDialog.adaptive(
           title: const Text('Save failed'),
           content: Text('Could not update product in Firestore.\n$e'),
           actions: [
-            CupertinoDialogAction(
+            TextButton(
               child: const Text('OK'),
               onPressed: () => Navigator.of(context).pop(),
             ),
@@ -196,13 +209,13 @@ class _EditProductScreenState extends State<EditProductScreen> {
       if (!mounted) {
         return;
       }
-      showCupertinoDialog(
+      showAdaptiveDialog(
         context: context,
-        builder: (_) => CupertinoAlertDialog(
+        builder: (context) => AlertDialog.adaptive(
           title: const Text('Fout'),
           content: Text('Kon foto niet selecteren.\n$e'),
           actions: [
-            CupertinoDialogAction(
+            TextButton(
               child: const Text('OK'),
               onPressed: () => Navigator.of(context).pop(),
             ),
@@ -217,45 +230,87 @@ class _EditProductScreenState extends State<EditProductScreen> {
       return;
     }
 
-    await showCupertinoModalPopup<void>(
-      context: context,
-      builder: (sheetContext) => CupertinoActionSheet(
-        title: const Text('Kies een foto'),
-        actions: [
-          CupertinoActionSheetAction(
-            onPressed: () async {
-              Navigator.of(sheetContext).pop();
-              await _pickImage(ImageSource.camera);
-            },
-            child: const Text('Neem foto'),
-          ),
-          CupertinoActionSheetAction(
-            onPressed: () async {
-              Navigator.of(sheetContext).pop();
-              await _pickImage(ImageSource.gallery);
-            },
-            child: const Text('Kies uit galerij'),
-          ),
-          if (_selectedImage != null || _imageUrlController.text.trim().isNotEmpty)
+    if (Platform.isIOS) {
+      await showCupertinoModalPopup<void>(
+        context: context,
+        builder: (sheetContext) => CupertinoActionSheet(
+          title: const Text('Kies een foto'),
+          actions: [
             CupertinoActionSheetAction(
-              isDestructiveAction: true,
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(sheetContext).pop();
-                setState(() {
-                  _selectedImage = null;
-                  _imageUrlController.clear();
-                  _removeExistingImage = true;
-                });
+                await _pickImage(ImageSource.camera);
               },
-              child: const Text('Verwijder foto'),
+              child: const Text('Neem foto'),
             ),
-        ],
-        cancelButton: CupertinoActionSheetAction(
-          onPressed: () => Navigator.of(sheetContext).pop(),
-          child: const Text('Annuleren'),
+            CupertinoActionSheetAction(
+              onPressed: () async {
+                Navigator.of(sheetContext).pop();
+                await _pickImage(ImageSource.gallery);
+              },
+              child: const Text('Kies uit galerij'),
+            ),
+            if (_selectedImage != null || _imageUrlController.text.trim().isNotEmpty)
+              CupertinoActionSheetAction(
+                isDestructiveAction: true,
+                onPressed: () {
+                  Navigator.of(sheetContext).pop();
+                  setState(() {
+                    _selectedImage = null;
+                    _imageUrlController.clear();
+                    _removeExistingImage = true;
+                  });
+                },
+                child: const Text('Verwijder foto'),
+              ),
+          ],
+          cancelButton: CupertinoActionSheetAction(
+            onPressed: () => Navigator.of(sheetContext).pop(),
+            child: const Text('Annuleren'),
+          ),
         ),
-      ),
-    );
+      );
+    } else {
+      await showModalBottomSheet<void>(
+        context: context,
+        builder: (sheetContext) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Neem foto'),
+                onTap: () async {
+                  Navigator.of(sheetContext).pop();
+                  await _pickImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Kies uit galerij'),
+                onTap: () async {
+                  Navigator.of(sheetContext).pop();
+                  await _pickImage(ImageSource.gallery);
+                },
+              ),
+              if (_selectedImage != null || _imageUrlController.text.trim().isNotEmpty)
+                ListTile(
+                  leading: const Icon(Icons.delete, color: Colors.red),
+                  title: const Text('Verwijder foto', style: TextStyle(color: Colors.red)),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    setState(() {
+                      _selectedImage = null;
+                      _imageUrlController.clear();
+                      _removeExistingImage = true;
+                    });
+                  },
+                ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildPhotoPickerCard() {

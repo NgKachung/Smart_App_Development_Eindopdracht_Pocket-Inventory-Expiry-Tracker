@@ -5,6 +5,7 @@ import '../models/inventory_item.dart';
 import '../providers/inventory_filter_provider.dart';
 import '../providers/inventory_items_provider.dart';
 import '../screens/edit_product_screen.dart';
+import '../providers/theme_provider.dart';
 import 'itemCard.dart';
 import 'item_detail_sheet.dart';
 
@@ -51,20 +52,22 @@ class _ItemCardsListState extends ConsumerState<ItemCardsList> {
   }
 
   Future<void> _confirmAndDelete(BuildContext context, InventoryItem item) async {
-    final shouldDelete = await showCupertinoDialog<bool>(
+    final shouldDelete = await showAdaptiveDialog<bool>(
       context: context,
-      builder: (dialogContext) => CupertinoAlertDialog(
+      builder: (dialogContext) => AlertDialog.adaptive(
         title: const Text('Verwijderen?'),
         content: Text('Weet je zeker dat je "${item.title}" wilt verwijderen?'),
         actions: [
-          CupertinoDialogAction(
+          TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text('Annuleren'),
           ),
-          CupertinoDialogAction(
-            isDestructiveAction: true,
+          TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Verwijderen'),
+            child: const Text(
+              'Verwijderen',
+              style: TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),
@@ -80,13 +83,13 @@ class _ItemCardsListState extends ConsumerState<ItemCardsList> {
       if (!mounted) {
         return;
       }
-      await showCupertinoDialog<void>(
+      await showAdaptiveDialog<void>(
         context: context,
-        builder: (dialogContext) => CupertinoAlertDialog(
+        builder: (dialogContext) => AlertDialog.adaptive(
           title: const Text('Verwijderen mislukt'),
           content: Text('Kon item niet verwijderen.\n$e'),
           actions: [
-            CupertinoDialogAction(
+            TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('OK'),
             ),
@@ -108,17 +111,18 @@ class _ItemCardsListState extends ConsumerState<ItemCardsList> {
 
   Color _statusColorForItem(InventoryItem item) {
     if (item.isExpired) {
-      return const Color(0xFFFFE6E6);
+      return const Color(0xFFD32F2F);
     }
     if (item.isUseSoon) {
-      return const Color(0xFFF7D9BD);
+      return const Color(0xFFEB6B00);
     }
-    return const Color(0xFFDFF7D9);
+    return const Color(0xFF38873A);
   }
 
   Widget _buildCard(BuildContext context, InventoryItem item) {
     final statusLabel = _statusLabelForItem(item);
     final statusColor = _statusColorForItem(item);
+    final isDark = CupertinoTheme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -128,9 +132,8 @@ class _ItemCardsListState extends ConsumerState<ItemCardsList> {
         imageUrl: item.imageUrl,
         statusLabel: statusLabel,
         statusColor: statusColor,
-        backgroundColor: item.isExpired ? const Color(0xFFFFF0F0) : null,
-        borderColor: item.isExpired ? const Color(0xFFE57373) : null,
-        deleteButtonColor: item.isExpired ? const Color(0xFFE57373) : null,
+
+        deleteButtonColor: item.isExpired ? const Color(0xFFD32F2F) : null,
         stockCount: item.stockCount,
         onDelete: () => _confirmAndDelete(context, item),
         onTap: () {
@@ -156,6 +159,8 @@ class _ItemCardsListState extends ConsumerState<ItemCardsList> {
   Widget build(BuildContext context) {
     final displayMode = ref.watch(inventoryDisplayModeProvider);
     final itemsAsync = ref.watch(inventoryItemsProvider);
+    final theme = CupertinoTheme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return itemsAsync.when(
       loading: () => const Padding(
@@ -166,7 +171,7 @@ class _ItemCardsListState extends ConsumerState<ItemCardsList> {
         padding: const EdgeInsets.symmetric(vertical: 20.0),
         child: Text(
           'Firestore error: $error',
-          style: TextStyle(color: Colors.grey.shade700),
+              style: TextStyle(color: isDark ? AppColors.darkText : AppColors.lightText),
         ),
       ),
       data: (allItems) {
@@ -182,7 +187,7 @@ class _ItemCardsListState extends ConsumerState<ItemCardsList> {
               widget.searchQuery.trim().isEmpty
                   ? 'Geen producten gevonden voor dit account.'
                   : 'Geen producten gevonden voor "${widget.searchQuery}".',
-              style: TextStyle(color: Colors.grey.shade700),
+              style: TextStyle(color: isDark ? AppColors.darkText : AppColors.lightText),
             ),
           );
         }

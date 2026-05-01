@@ -14,20 +14,22 @@ class ExpirationList extends StatelessWidget {
   static final FirestoreInventoryService _inventoryService = FirestoreInventoryService();
 
   Future<void> _confirmAndDelete(BuildContext context, InventoryItem item) async {
-    final shouldDelete = await showCupertinoDialog<bool>(
+    final shouldDelete = await showAdaptiveDialog<bool>(
       context: context,
-      builder: (dialogContext) => CupertinoAlertDialog(
+      builder: (dialogContext) => AlertDialog.adaptive(
         title: const Text('Verwijderen?'),
         content: Text('Weet je zeker dat je "${item.title}" wilt verwijderen?'),
         actions: [
-          CupertinoDialogAction(
+          TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text('Annuleren'),
           ),
-          CupertinoDialogAction(
-            isDestructiveAction: true,
+          TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Verwijderen'),
+            child: const Text(
+              'Verwijderen',
+              style: TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),
@@ -40,13 +42,13 @@ class ExpirationList extends StatelessWidget {
     try {
       await _inventoryService.deleteItem(item.id);
     } catch (e) {
-      await showCupertinoDialog<void>(
+      await showAdaptiveDialog<void>(
         context: context,
-        builder: (dialogContext) => CupertinoAlertDialog(
+        builder: (dialogContext) => AlertDialog.adaptive(
           title: const Text('Verwijderen mislukt'),
           content: Text('Kon item niet verwijderen.\n$e'),
           actions: [
-            CupertinoDialogAction(
+            TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('OK'),
             ),
@@ -57,6 +59,8 @@ class ExpirationList extends StatelessWidget {
   }
 
   Widget _buildCard(BuildContext context, InventoryItem item) {
+    final isDark = CupertinoTheme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: ItemCard(
@@ -64,8 +68,12 @@ class ExpirationList extends StatelessWidget {
         subtitle: item.subtitle,
         imageUrl: item.imageUrl,
         statusLabel: item.isExpired ? 'EXPIRED' : 'USE SOON',
-        statusColor: item.isExpired ? const Color(0xFFFFE6E6) : const Color(0xFFF7D9BD),
-        backgroundColor: item.isExpired ? const Color(0xFFFAF9F9) : null,
+        statusColor: item.isExpired 
+            ? const Color(0xFFD32F2F) 
+            : const Color(0xFFEB6B00),
+        backgroundColor: item.isExpired 
+            ? (isDark ? const Color(0xFF1E1E1E) : const Color(0xFFFAF9F9)) 
+            : null,
         stockCount: item.stockCount,
         onDelete: () => _confirmAndDelete(context, item),
         onTap: () {
@@ -89,6 +97,8 @@ class ExpirationList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = CupertinoTheme.of(context);
+    
     return StreamBuilder<List<InventoryItem>>(
       stream: _inventoryService.watchAllItems(),
       builder: (context, snapshot) {
@@ -104,7 +114,7 @@ class ExpirationList extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 20.0),
             child: Text(
               'Firestore error: ${snapshot.error}',
-              style: TextStyle(color: Colors.grey.shade700),
+              style: const TextStyle(color: CupertinoColors.systemRed),
             ),
           );
         }
@@ -114,11 +124,11 @@ class ExpirationList extends StatelessWidget {
             .toList();
 
         if (items.isEmpty) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20.0),
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20.0),
             child: Text(
               'Geen items die bijna verlopen of verlopen zijn voor dit account.',
-              style: TextStyle(color: Colors.grey.shade700),
+              style: TextStyle(color: CupertinoColors.secondaryLabel),
             ),
           );
         }

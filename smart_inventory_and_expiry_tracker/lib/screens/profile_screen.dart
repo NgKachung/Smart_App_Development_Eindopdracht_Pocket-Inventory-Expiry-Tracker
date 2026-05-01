@@ -1,19 +1,23 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' show Colors;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
 import 'kitchen_display_screen.dart';
+import '../providers/theme_provider.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final user = AuthService().currentUser;
     final email = user?.email ?? 'Unknown user';
     final createdAt = _formatDateTime(user?.metadata.creationTime);
     final lastSignInAt = _formatDateTime(user?.metadata.lastSignInTime);
     final accountId = user?.uid ?? 'Unavailable';
+    final themeMode = ref.watch(themeProvider);
+    final isDark = CupertinoTheme.of(context).brightness == Brightness.dark;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -25,11 +29,12 @@ class ProfileScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'My profile',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w700,
+                    color: isDark ? AppColors.darkText : AppColors.lightText,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -42,12 +47,46 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 _InfoCard(
+                  title: 'App Theme',
+                  children: [
+                    const Text(
+                      'Choose how the app looks for you.',
+                      style: TextStyle(fontSize: 14, color: CupertinoColors.systemGrey),
+                    ),
+                    const SizedBox(height: 12),
+                    CupertinoSlidingSegmentedControl<AppThemeMode>(
+                      groupValue: themeMode,
+                      children: const {
+                        AppThemeMode.light: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Text('Light'),
+                        ),
+                        AppThemeMode.dark: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Text('Dark'),
+                        ),
+                        AppThemeMode.system: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Text('System'),
+                        ),
+                      },
+                      onValueChanged: (value) {
+                        if (value != null) {
+                          ref.read(themeProvider.notifier).setTheme(value);
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _InfoCard(
                   title: 'Account overview',
                   children: [
                     _InfoRow(
                       label: 'Signed in as',
                       value: email,
                       emphasize: true,
+                      isDarkMode: isDark,
                     ),
                   ],
                 ),
@@ -55,9 +94,9 @@ class ProfileScreen extends StatelessWidget {
                 _InfoCard(
                   title: 'Security and activity',
                   children: [
-                    _InfoRow(label: 'User ID', value: accountId),
-                    _InfoRow(label: 'Account created', value: createdAt),
-                    _InfoRow(label: 'Last sign in', value: lastSignInAt),
+                    _InfoRow(label: 'User ID', value: accountId, isDarkMode: isDark),
+                    _InfoRow(label: 'Account created', value: createdAt, isDarkMode: isDark),
+                    _InfoRow(label: 'Last sign in', value: lastSignInAt, isDarkMode: isDark),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -161,22 +200,25 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = CupertinoTheme.of(context).brightness == Brightness.dark;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: CupertinoColors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : CupertinoColors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFDDE5DD)),
+        border: Border.all(color: isDark ? const Color(0xFF333333) : const Color(0xFFDDE5DD)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w700,
+              color: isDark ? AppColors.darkText : AppColors.lightText,
             ),
           ),
           const SizedBox(height: 12),
@@ -192,11 +234,13 @@ class _InfoRow extends StatelessWidget {
     required this.label,
     required this.value,
     this.emphasize = false,
+    required this.isDarkMode,
   });
 
   final String label;
   final String value;
   final bool emphasize;
+  final bool isDarkMode;
 
   @override
   Widget build(BuildContext context) {
@@ -218,6 +262,7 @@ class _InfoRow extends StatelessWidget {
             style: TextStyle(
               fontSize: emphasize ? 17 : 15,
               fontWeight: emphasize ? FontWeight.w700 : FontWeight.w500,
+              color: isDarkMode ? AppColors.darkText : AppColors.lightText,
             ),
           ),
         ],

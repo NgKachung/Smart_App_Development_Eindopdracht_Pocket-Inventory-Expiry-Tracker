@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import 'dashboard_screen.dart';
 import 'register_screen.dart';
 import 'forgot_password.dart';
+import '../providers/theme_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -69,8 +70,11 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
+    final theme = CupertinoTheme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return CupertinoPageScaffold(
-      backgroundColor: CupertinoColors.systemGrey6,
+      backgroundColor: theme.scaffoldBackgroundColor,
       child: SafeArea(
         child: Column(
           children: [
@@ -83,8 +87,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const Text('Welcome back',
-                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                      Text('Welcome back',
+                          style: TextStyle(
+                            fontSize: 32, 
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.darkText : AppColors.lightText,
+                          )),
                       const SizedBox(height: 8),
                       Text('Enter your details below',
                           style: TextStyle(color: CupertinoColors.systemGrey, fontSize: 14)),
@@ -97,10 +105,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         keyboardType: TextInputType.emailAddress,
                         autocorrect: false,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        style: TextStyle(color: isDark ? AppColors.darkText : AppColors.lightText),
+                        placeholderStyle: TextStyle(color: isDark ? Colors.grey.shade500 : Colors.grey.shade400),
                         decoration: BoxDecoration(
-                          color: CupertinoColors.white,
+                          color: isDark ? AppColors.darkCardBackground : CupertinoColors.white,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: CupertinoColors.systemGrey4),
+                          border: Border.all(color: isDark ? AppColors.darkBorder : CupertinoColors.systemGrey4),
                         ),
                       ),
                       const SizedBox(height: 18),
@@ -115,10 +125,12 @@ class _LoginScreenState extends State<LoginScreen> {
                             obscureText: _obscure,
                             autocorrect: false,
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            style: TextStyle(color: isDark ? AppColors.darkText : AppColors.lightText),
+                            placeholderStyle: TextStyle(color: isDark ? Colors.grey.shade500 : Colors.grey.shade400),
                             decoration: BoxDecoration(
-                              color: CupertinoColors.white,
+                              color: isDark ? AppColors.darkCardBackground : CupertinoColors.white,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: CupertinoColors.systemGrey4),
+                              border: Border.all(color: isDark ? AppColors.darkBorder : CupertinoColors.systemGrey4),
                             ),
                           ),
                           CupertinoButton(
@@ -172,8 +184,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           height: 50,
                           decoration: BoxDecoration(
                             color: _isLoading
-                                ? const Color(0xFF0F8A22).withValues(alpha: 0.65)
-                                : const Color(0xFF0F8A22),
+                                ? theme.primaryColor.withValues(alpha: 0.65)
+                                : theme.primaryColor,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Center(
@@ -211,9 +223,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: const TextStyle(color: CupertinoColors.systemGrey),
                         children: [
                           const TextSpan(text: 'New to ExpiryEase? '),
-                          const TextSpan(
+                          TextSpan(
                             text: 'Signup',
-                            style: TextStyle(color: Color(0xFF0F8A22), fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: theme.primaryColor, 
+                              fontWeight: FontWeight.bold
+                            ),
                           )
                         ],
                       ),

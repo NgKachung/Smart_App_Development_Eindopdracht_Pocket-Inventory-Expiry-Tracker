@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/inventory_filter_provider.dart';
+import '../providers/inventory_items_provider.dart';
+import '../services/notification_service.dart';
 import '../widgets/bottom_navigation_bar.dart';
 import '../widgets/itemCardsList.dart';
 import '../widgets/expiration_list.dart';
@@ -20,11 +22,23 @@ class DashboardScreen extends ConsumerStatefulWidget {
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   int _selectedIndex = 0;
   String _searchQuery = '';
+  bool _notificationsSynced = false;
 
-  // Logout helper removed (not referenced). Use AuthService().signOut() where needed.
+  void _syncNotificationsOnce() {
+    if (_notificationsSynced) return;
+
+    ref.listenManual(inventoryItemsProvider, (previous, next) {
+      if (next.hasValue && !_notificationsSynced) {
+        NotificationService().rescheduleAllNotifications(next.value!);
+        setState(() => _notificationsSynced = true);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    _syncNotificationsOnce();
+
     final navTitle = _selectedIndex == 2
         ? 'My profile'
         : (_selectedIndex == 1 ? 'Expiration' : 'Inventory');

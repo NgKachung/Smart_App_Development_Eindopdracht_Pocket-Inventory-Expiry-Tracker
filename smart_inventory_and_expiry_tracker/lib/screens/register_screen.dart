@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'dashboard_screen.dart';
 import 'login_screen.dart';
+import '../providers/theme_provider.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -79,8 +80,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
+    final theme = CupertinoTheme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return CupertinoPageScaffold(
-      backgroundColor: CupertinoColors.systemGrey6,
+      backgroundColor: theme.scaffoldBackgroundColor,
       child: SafeArea(
         child: Column(
           children: [
@@ -93,8 +97,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const Text('Create Account',
-                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                      Text('Create Account',
+                          style: TextStyle(
+                            fontSize: 32, 
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.darkText : AppColors.lightText,
+                          )),
                       const SizedBox(height: 8),
                       Text('Enter your details below',
                           style: TextStyle(color: CupertinoColors.systemGrey, fontSize: 14)),
@@ -107,10 +115,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         keyboardType: TextInputType.emailAddress,
                         autocorrect: false,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        style: TextStyle(color: isDark ? AppColors.darkText : AppColors.lightText),
+                        placeholderStyle: TextStyle(color: isDark ? Colors.grey.shade500 : Colors.grey.shade400),
                         decoration: BoxDecoration(
-                          color: CupertinoColors.white,
+                          color: isDark ? AppColors.darkCardBackground : CupertinoColors.white,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: CupertinoColors.systemGrey4),
+                          border: Border.all(color: isDark ? AppColors.darkBorder : CupertinoColors.systemGrey4),
                         ),
                       ),
                       const SizedBox(height: 18),
@@ -125,10 +135,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             obscureText: _obscurePassword,
                             autocorrect: false,
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            style: TextStyle(color: isDark ? AppColors.darkText : AppColors.lightText),
+                            placeholderStyle: TextStyle(color: isDark ? Colors.grey.shade500 : Colors.grey.shade400),
                             decoration: BoxDecoration(
-                              color: CupertinoColors.white,
+                              color: isDark ? AppColors.darkCardBackground : CupertinoColors.white,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: CupertinoColors.systemGrey4),
+                              border: Border.all(color: isDark ? AppColors.darkBorder : CupertinoColors.systemGrey4),
                             ),
                           ),
                           CupertinoButton(
@@ -154,10 +166,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             obscureText: _obscureConfirmPassword,
                             autocorrect: false,
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            style: TextStyle(color: isDark ? AppColors.darkText : AppColors.lightText),
+                            placeholderStyle: TextStyle(color: isDark ? Colors.grey.shade500 : Colors.grey.shade400),
                             decoration: BoxDecoration(
-                              color: CupertinoColors.white,
+                              color: isDark ? AppColors.darkCardBackground : CupertinoColors.white,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: CupertinoColors.systemGrey4),
+                              border: Border.all(color: isDark ? AppColors.darkBorder : CupertinoColors.systemGrey4),
                             ),
                           ),
                           CupertinoButton(
@@ -194,8 +208,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           height: 50,
                           decoration: BoxDecoration(
                             color: _isLoading
-                                ? const Color(0xFF0F8A22).withValues(alpha: 0.65)
-                                : const Color(0xFF0F8A22),
+                                ? theme.primaryColor.withValues(alpha: 0.65)
+                                : theme.primaryColor,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Center(
@@ -233,9 +247,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         style: const TextStyle(color: CupertinoColors.systemGrey),
                         children: [
                           const TextSpan(text: 'Already have an account? '),
-                          const TextSpan(
+                          TextSpan(
                             text: 'Login',
-                            style: TextStyle(color: Color(0xFF0F8A22), fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: theme.primaryColor, 
+                              fontWeight: FontWeight.bold
+                            ),
                           )
                         ],
                       ),
