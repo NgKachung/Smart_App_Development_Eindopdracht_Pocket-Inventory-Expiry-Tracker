@@ -128,7 +128,7 @@ class ItemCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: deleteButtonColor ?? Colors.green.shade700,
+                  color: deleteButtonColor ?? (isDark ? Colors.grey.shade800 : Colors.grey.shade400),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(CupertinoIcons.delete, color: Colors.white, size: 20),

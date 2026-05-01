@@ -389,8 +389,20 @@ class _AddProductScreenState extends State<AddProductScreen> {
               ),
               if (_selectedImage != null || _imageUrlController.text.trim().isNotEmpty)
                 ListTile(
-                  leading: const Icon(Icons.delete, color: Colors.red),
-                  title: const Text('Verwijder foto', style: TextStyle(color: Colors.red)),
+                  leading: Icon(
+                    Icons.delete, 
+                    color: CupertinoTheme.of(context).brightness == Brightness.dark 
+                        ? const Color(0xFF616161) 
+                        : Colors.grey.shade600,
+                  ),
+                  title: Text(
+                    'Verwijder foto', 
+                    style: TextStyle(
+                      color: CupertinoTheme.of(context).brightness == Brightness.dark 
+                          ? const Color(0xFF616161) 
+                          : Colors.grey.shade600,
+                    ),
+                  ),
                   onTap: () {
                     Navigator.of(sheetContext).pop();
                     setState(() {

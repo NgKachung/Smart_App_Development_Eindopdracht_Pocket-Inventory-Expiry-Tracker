@@ -133,7 +133,7 @@ class _ItemCardsListState extends ConsumerState<ItemCardsList> {
         statusLabel: statusLabel,
         statusColor: statusColor,
 
-        deleteButtonColor: item.isExpired ? const Color(0xFFD32F2F) : null,
+        deleteButtonColor: null,
         stockCount: item.stockCount,
         onDelete: () => _confirmAndDelete(context, item),
         onTap: () {

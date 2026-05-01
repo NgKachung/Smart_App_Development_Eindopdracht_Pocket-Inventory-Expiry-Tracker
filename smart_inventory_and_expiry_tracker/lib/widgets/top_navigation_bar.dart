@@ -110,7 +110,7 @@ class _CupertinoTopNavigationBarState extends State<CupertinoTopNavigationBar> {
               onPressed: _toggleSearch,
               child: Icon(
                 _isSearching ? CupertinoIcons.clear : CupertinoIcons.search,
-                color: isDark ? AppColors.darkText : AppColors.lightText,
+                color: isDark ? Colors.green.shade700 : Colors.green.shade700,
                 size: 24,
               ),
             )
