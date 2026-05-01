@@ -51,9 +51,10 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
   @override
   Widget build(BuildContext context) {
     final inventoryAsync = ref.watch(inventoryItemsProvider);
+    final isDark = CupertinoTheme.of(context).brightness == Brightness.dark;
 
     return CupertinoPageScaffold(
-      backgroundColor: const Color(0xFFF8FAF8),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF8FAF8),
       child: inventoryAsync.when(
         data: (items) => _buildContent(items),
         loading: () => const Center(child: CupertinoActivityIndicator()),
@@ -65,6 +66,7 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
   Widget _buildContent(List<InventoryItem> items) {
     final expiringSoonCount = items.where((i) => i.isUseSoon || i.isExpired).length;
     final lowStockCount = items.where((i) => i.stockCount <= 2).length;
+    final isDark = CupertinoTheme.of(context).brightness == Brightness.dark;
 
     return SafeArea(
       child: Column(
@@ -80,18 +82,18 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
                   children: [
                     Text(
                       _formatTime(_now),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 64,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -2,
-                        color: Color(0xFF1B3D1B),
+                        color: isDark ? const Color(0xFFE0E0E0) : const Color(0xFF1B3D1B),
                       ),
                     ),
                     Text(
                       _formatDate(_now),
                       style: TextStyle(
                         fontSize: 20,
-                        color: Colors.green.shade900.withOpacity(0.6),
+                        color: isDark ? Colors.green.shade400 : Colors.green.shade900.withOpacity(0.6),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -109,11 +111,11 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.grey.shade300),
+                          border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade300),
                         ),
-                        child: const Icon(CupertinoIcons.xmark, color: Colors.black87),
+                        child: Icon(CupertinoIcons.xmark, color: isDark ? Colors.white : Colors.black87),
                       ),
                     ),
                   ],
@@ -152,10 +154,11 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
   }
 
   Widget _buildStatCard(String label, int count, Color color) {
+    final isDark = CupertinoTheme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color.withOpacity(0.3), width: 2),
       ),
@@ -174,7 +177,7 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
-              color: Colors.grey.shade600,
+              color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
               letterSpacing: 1,
             ),
           ),
@@ -185,15 +188,18 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
 
   Widget _buildKitchenItemCard(InventoryItem item) {
     bool isWarning = item.isUseSoon || item.isExpired || item.stockCount <= 1;
-    Color accentColor = item.isExpired ? Colors.red : (item.isUseSoon ? Colors.orange : Colors.green);
+    Color accentColor = item.isExpired 
+        ? const Color(0xFFD32F2F) 
+        : (item.isUseSoon ? const Color(0xFFEB6B00) : const Color(0xFF38873A));
+    final isDark = CupertinoTheme.of(context).brightness == Brightness.dark;
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -209,7 +215,7 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
             child: Container(
               margin: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
+                color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: ClipRRect(
@@ -218,9 +224,9 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
                     ? Image.network(
                         item.imageUrl!,
                         fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const Icon(CupertinoIcons.photo, size: 50, color: Colors.grey),
+                        errorBuilder: (_, __, ___) => Icon(CupertinoIcons.photo, size: 50, color: isDark ? Colors.grey.shade700 : Colors.grey),
                       )
-                    : const Icon(CupertinoIcons.photo, size: 50, color: Colors.grey),
+                    : Icon(CupertinoIcons.photo, size: 50, color: isDark ? Colors.grey.shade700 : Colors.grey),
               ),
             ),
           ),
@@ -238,10 +244,10 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
                     item.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF1B3D1B),
+                      color: isDark ? const Color(0xFFE0E0E0) : const Color(0xFF1B3D1B),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -251,15 +257,15 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: accentColor.withOpacity(0.1),
+                          color: accentColor,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           item.isExpired ? 'EXPIRED' : (item.isUseSoon ? 'SOON' : 'OK'),
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w800,
-                            color: accentColor,
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -268,7 +274,7 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: item.stockCount <= 1 ? Colors.red : Colors.green.shade700,
+                          color: item.stockCount <= 1 ? Colors.red : (isDark ? Colors.green.shade400 : Colors.green.shade700),
                         ),
                       ),
                     ],

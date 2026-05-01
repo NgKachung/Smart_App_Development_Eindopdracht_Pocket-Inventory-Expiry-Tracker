@@ -84,28 +84,44 @@ class _AddProductScreenState extends State<AddProductScreen> {
   }
 
   void _pickExpiryDate() {
-    showCupertinoModalPopup(
-      context: context,
-      builder: (_) => Container(
-        height: 300,
-        color: CupertinoColors.systemBackground.resolveFrom(context),
-        child: Column(
-          children: [
-            SizedBox(
-              height: 240,
-              child: CupertinoDatePicker(
-                mode: CupertinoDatePickerMode.date,
-                initialDateTime: _expiryDate ?? DateTime.now().add(const Duration(days: 7)),
-                minimumDate: DateTime(2000),
-                maximumDate: DateTime(2100),
-                onDateTimeChanged: (d) => setState(() => _expiryDate = d),
+    if (Platform.isIOS) {
+      showCupertinoModalPopup(
+        context: context,
+        builder: (_) => Container(
+          height: 300,
+          color: CupertinoColors.systemBackground.resolveFrom(context),
+          child: Column(
+            children: [
+              SizedBox(
+                height: 240,
+                child: CupertinoDatePicker(
+                  mode: CupertinoDatePickerMode.date,
+                  initialDateTime: _expiryDate ?? DateTime.now().add(const Duration(days: 7)),
+                  minimumDate: DateTime(2000),
+                  maximumDate: DateTime(2100),
+                  onDateTimeChanged: (d) => setState(() => _expiryDate = d),
+                ),
               ),
-            ),
-            CupertinoButton(child: const Text('Done'), onPressed: () => Navigator.of(context).pop()),
-          ],
+              CupertinoButton(
+                child: const Text('Done'),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    } else {
+      showDatePicker(
+        context: context,
+        initialDate: _expiryDate ?? DateTime.now().add(const Duration(days: 7)),
+        firstDate: DateTime(2000),
+        lastDate: DateTime(2100),
+      ).then((selectedDate) {
+        if (selectedDate != null) {
+          setState(() => _expiryDate = selectedDate);
+        }
+      });
+    }
   }
 
   Future<void> _save() async {
@@ -124,12 +140,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final quantity = _quantityController.text.trim();
 
     if (title.isEmpty || description.isEmpty || _expiryDate == null) {
-      showCupertinoDialog(
+      showAdaptiveDialog(
         context: context,
-        builder: (_) => CupertinoAlertDialog(
+        builder: (context) => AlertDialog.adaptive(
           title: const Text('Validation'),
           content: const Text('Please provide a title, description and an expiry date.'),
-          actions: [CupertinoDialogAction(child: const Text('OK'), onPressed: () => Navigator.of(context).pop())],
+          actions: [
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
         ),
       );
       return;
@@ -167,12 +188,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
       if (!mounted) {
         return;
       }
-      showCupertinoDialog(
+      showAdaptiveDialog(
         context: context,
-        builder: (_) => CupertinoAlertDialog(
+        builder: (context) => AlertDialog.adaptive(
           title: const Text('Save failed'),
           content: Text('Could not save product to Firestore.\n$e'),
-          actions: [CupertinoDialogAction(child: const Text('OK'), onPressed: () => Navigator.of(context).pop())],
+          actions: [
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
         ),
       );
     } finally {
@@ -192,12 +218,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
     final barcode = _barcodeController.text.trim();
     if (barcode.isEmpty) {
-      showCupertinoDialog(
+      showAdaptiveDialog(
         context: context,
-        builder: (_) => CupertinoAlertDialog(
+        builder: (context) => AlertDialog.adaptive(
           title: const Text('Barcode nodig'),
           content: const Text('Voer eerst een barcode in om gegevens op te halen.'),
-          actions: [CupertinoDialogAction(child: const Text('OK'), onPressed: () => Navigator.of(context).pop())],
+          actions: [
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
         ),
       );
       return;
@@ -213,12 +244,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
       }
 
       if (product == null) {
-        showCupertinoDialog(
+        showAdaptiveDialog(
           context: context,
-          builder: (_) => CupertinoAlertDialog(
+          builder: (context) => AlertDialog.adaptive(
             title: const Text('Niet gevonden'),
             content: const Text('Geen product gevonden op OpenFoodFacts voor deze barcode.'),
-            actions: [CupertinoDialogAction(child: const Text('OK'), onPressed: () => Navigator.of(context).pop())],
+            actions: [
+              TextButton(
+                child: const Text('OK'),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
           ),
         );
         return;
@@ -237,12 +273,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
         return;
       }
 
-      showCupertinoDialog(
+      showAdaptiveDialog(
         context: context,
-        builder: (_) => CupertinoAlertDialog(
+        builder: (context) => AlertDialog.adaptive(
           title: const Text('OpenFoodFacts fout'),
           content: Text('Kon productgegevens niet ophalen.\n$e'),
-          actions: [CupertinoDialogAction(child: const Text('OK'), onPressed: () => Navigator.of(context).pop())],
+          actions: [
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
         ),
       );
     } finally {
@@ -262,12 +303,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
       }
     } catch (e) {
       if (mounted) {
-        showCupertinoDialog(
+        showAdaptiveDialog(
           context: context,
-          builder: (_) => CupertinoAlertDialog(
+          builder: (context) => AlertDialog.adaptive(
             title: const Text('Fout'),
             content: Text('Kon foto niet selecteren.\n$e'),
-            actions: [CupertinoDialogAction(child: const Text('OK'), onPressed: () => Navigator.of(context).pop())],
+            actions: [
+              TextButton(
+                child: const Text('OK'),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
           ),
         );
       }
@@ -279,44 +325,85 @@ class _AddProductScreenState extends State<AddProductScreen> {
       return;
     }
 
-    await showCupertinoModalPopup<void>(
-      context: context,
-      builder: (sheetContext) => CupertinoActionSheet(
-        title: const Text('Kies een foto'),
-        actions: [
-          CupertinoActionSheetAction(
-            onPressed: () async {
-              Navigator.of(sheetContext).pop();
-              await _pickImage(ImageSource.camera);
-            },
-            child: const Text('Neem foto'),
-          ),
-          CupertinoActionSheetAction(
-            onPressed: () async {
-              Navigator.of(sheetContext).pop();
-              await _pickImage(ImageSource.gallery);
-            },
-            child: const Text('Kies uit galerij'),
-          ),
-          if (_selectedImage != null || _imageUrlController.text.trim().isNotEmpty)
+    if (Platform.isIOS) {
+      await showCupertinoModalPopup<void>(
+        context: context,
+        builder: (sheetContext) => CupertinoActionSheet(
+          title: const Text('Kies een foto'),
+          actions: [
             CupertinoActionSheetAction(
-              isDestructiveAction: true,
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(sheetContext).pop();
-                setState(() {
-                  _selectedImage = null;
-                  _imageUrlController.clear();
-                });
+                await _pickImage(ImageSource.camera);
               },
-              child: const Text('Verwijder foto'),
+              child: const Text('Neem foto'),
             ),
-        ],
-        cancelButton: CupertinoActionSheetAction(
-          onPressed: () => Navigator.of(sheetContext).pop(),
-          child: const Text('Annuleren'),
+            CupertinoActionSheetAction(
+              onPressed: () async {
+                Navigator.of(sheetContext).pop();
+                await _pickImage(ImageSource.gallery);
+              },
+              child: const Text('Kies uit galerij'),
+            ),
+            if (_selectedImage != null || _imageUrlController.text.trim().isNotEmpty)
+              CupertinoActionSheetAction(
+                isDestructiveAction: true,
+                onPressed: () {
+                  Navigator.of(sheetContext).pop();
+                  setState(() {
+                    _selectedImage = null;
+                    _imageUrlController.clear();
+                  });
+                },
+                child: const Text('Verwijder foto'),
+              ),
+          ],
+          cancelButton: CupertinoActionSheetAction(
+            onPressed: () => Navigator.of(sheetContext).pop(),
+            child: const Text('Annuleren'),
+          ),
         ),
-      ),
-    );
+      );
+    } else {
+      await showModalBottomSheet<void>(
+        context: context,
+        builder: (sheetContext) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Neem foto'),
+                onTap: () async {
+                  Navigator.of(sheetContext).pop();
+                  await _pickImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Kies uit galerij'),
+                onTap: () async {
+                  Navigator.of(sheetContext).pop();
+                  await _pickImage(ImageSource.gallery);
+                },
+              ),
+              if (_selectedImage != null || _imageUrlController.text.trim().isNotEmpty)
+                ListTile(
+                  leading: const Icon(Icons.delete, color: Colors.red),
+                  title: const Text('Verwijder foto', style: TextStyle(color: Colors.red)),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    setState(() {
+                      _selectedImage = null;
+                      _imageUrlController.clear();
+                    });
+                  },
+                ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildPhotoPickerCard() {

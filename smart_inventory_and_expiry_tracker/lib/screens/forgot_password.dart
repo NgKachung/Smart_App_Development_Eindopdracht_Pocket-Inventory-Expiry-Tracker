@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import '../providers/theme_provider.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -37,16 +38,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       await AuthService().sendPasswordResetEmail(email: email);
 
       if (!mounted) return;
-      await showCupertinoDialog(
+      await showAdaptiveDialog(
         context: context,
-        builder: (context) => CupertinoAlertDialog(
+        builder: (context) => AlertDialog.adaptive(
           title: const Text('Email sent'),
           content: const Padding(
             padding: EdgeInsets.only(top: 8.0),
             child: Text('If an account exists for that email, a password reset link has been sent.'),
           ),
           actions: [
-            CupertinoDialogAction(
+            TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
                 Navigator.of(context).pop();
@@ -66,8 +67,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
+    final theme = CupertinoTheme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return CupertinoPageScaffold(
-      backgroundColor: CupertinoColors.systemGrey6,
+      backgroundColor: theme.scaffoldBackgroundColor,
       child: SafeArea(
         child: Column(
           children: [
@@ -79,8 +83,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const Text('Reset Password',
-                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                      Text('Reset Password',
+                          style: TextStyle(
+                            fontSize: 32, 
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.darkText : AppColors.lightText,
+                          )),
                       const SizedBox(height: 8),
                       Text('Enter your email to receive reset instructions',
                           style: TextStyle(color: CupertinoColors.systemGrey, fontSize: 14)),
@@ -92,10 +100,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         keyboardType: TextInputType.emailAddress,
                         autocorrect: false,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        style: TextStyle(color: isDark ? AppColors.darkText : AppColors.lightText),
+                        placeholderStyle: TextStyle(color: isDark ? Colors.grey.shade500 : Colors.grey.shade400),
                         decoration: BoxDecoration(
-                          color: CupertinoColors.white,
+                          color: isDark ? AppColors.darkCardBackground : CupertinoColors.white,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: CupertinoColors.systemGrey4),
+                          border: Border.all(color: isDark ? AppColors.darkBorder : CupertinoColors.systemGrey4),
                         ),
                       ),
                       const SizedBox(height: 18),
@@ -118,8 +128,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           height: 50,
                           decoration: BoxDecoration(
                             color: _isLoading
-                                ? const Color(0xFF0F8A22).withValues(alpha: 0.65)
-                                : const Color(0xFF0F8A22),
+                                ? theme.primaryColor.withValues(alpha: 0.65)
+                                : theme.primaryColor,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Center(
@@ -149,9 +159,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         style: const TextStyle(color: CupertinoColors.systemGrey),
                         children: [
                           const TextSpan(text: 'Remembered your password? '),
-                          const TextSpan(
+                          TextSpan(
                             text: 'Login',
-                            style: TextStyle(color: Color(0xFF0F8A22), fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: theme.primaryColor, 
+                              fontWeight: FontWeight.bold
+                            ),
                           )
                         ],
                       ),

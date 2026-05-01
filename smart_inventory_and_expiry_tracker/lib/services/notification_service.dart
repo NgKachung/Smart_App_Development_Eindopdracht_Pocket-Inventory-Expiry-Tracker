@@ -1,6 +1,7 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:flutter_timezone/flutter_timezone.dart';
 import '../models/inventory_item.dart';
 
 class NotificationService {
@@ -17,6 +18,12 @@ class NotificationService {
 
   Future<void> init() async {
     tz.initializeTimeZones();
+    try {
+      final String timeZoneName = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
+    } catch (_) {
+      // Fallback if timezone detection fails
+    }
 
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -42,29 +49,54 @@ class NotificationService {
         flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
     await androidImplementation?.requestNotificationsPermission();
+    await androidImplementation?.requestExactAlarmsPermission();
+  }
+
+  /// Reschedules all notifications for a list of items.
+  /// Useful for syncing notifications when the app starts.
+  Future<void> rescheduleAllNotifications(List<InventoryItem> items) async {
+    await flutterLocalNotificationsPlugin.cancelAll();
+    for (final item in items) {
+      await scheduleExpiryNotifications(item);
+    }
   }
 
   Future<void> scheduleExpiryNotifications(InventoryItem item) async {
-    // 1. Bijna over datum (bijv. 3 dagen van tevoren)
+    // We schedule notifications at 09:00 in the morning
+    const notificationHour = 9;
+
+    // 1. Almost Expired (3 days before)
     final almostExpiredDate = item.expiryDate.subtract(const Duration(days: 3));
+    final scheduledAlmost = DateTime(
+      almostExpiredDate.year,
+      almostExpiredDate.month,
+      almostExpiredDate.day,
+      notificationHour,
+    );
     
-    // Voorkom het inplannen van notificaties in het verleden
-    if (almostExpiredDate.isAfter(DateTime.now())) {
+    if (scheduledAlmost.isAfter(DateTime.now())) {
       await _scheduleNotification(
         id: item.id.hashCode,
         title: 'Product bijna over datum!',
-        body: '${item.title} vervalt op ${item.expiryDate.toLocal().toString().split(' ')[0]}.',
-        scheduledDate: almostExpiredDate,
+        body: '${item.title} vervalt over 3 days (${item.expiryDate.toLocal().toString().split(' ')[0]}).',
+        scheduledDate: scheduledAlmost,
       );
     }
 
-    // 2. Over datum (de dag zelf)
-    if (item.expiryDate.isAfter(DateTime.now())) {
+    // 2. Expired (on the day itself)
+    final scheduledExpired = DateTime(
+      item.expiryDate.year,
+      item.expiryDate.month,
+      item.expiryDate.day,
+      notificationHour,
+    );
+
+    if (scheduledExpired.isAfter(DateTime.now())) {
       await _scheduleNotification(
         id: (item.id + '_expired').hashCode,
         title: 'Product over datum!',
         body: '${item.title} is vandaag vervallen.',
-        scheduledDate: item.expiryDate,
+        scheduledDate: scheduledExpired,
       );
     }
   }

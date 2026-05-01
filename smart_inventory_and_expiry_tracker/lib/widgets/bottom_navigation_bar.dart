@@ -1,23 +1,15 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-/// A simple bottom navigation bar with three items: Dashboard, Expiration, Profile.
-///
-/// Items are equal width; icon is always above the label. Active item shows
-/// a rounded pill background but does not change item width to prevent shifts.
 class AppBottomNavigationBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
 
   const AppBottomNavigationBar({
-    Key? key,
+    super.key,
     required this.currentIndex,
     required this.onTap,
-  }) : super(key: key);
-
-  static const _activeBg = Color(0xFFD8F6E8);
-  static const _activeText = Color(0xFF0F6B4A);
-  static const _inactiveText = Color(0xFF7A7A7A);
+  });
 
   Widget _buildItem({
     required BuildContext context,
@@ -25,11 +17,18 @@ class AppBottomNavigationBar extends StatelessWidget {
     required IconData icon,
     required String label,
   }) {
+    final theme = CupertinoTheme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final active = index == currentIndex;
+
+    final activeBg = isDark ? const Color(0xFF1B3D1B) : const Color(0xFFD8F6E8);
+    final activeText = isDark ? const Color(0xFF4CAF50) : const Color(0xFF0F6B4A);
+    final inactiveText = isDark ? const Color(0xFF888888) : const Color(0xFF7A7A7A);
+
     final textStyle = TextStyle(
       fontSize: 12,
       fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-      color: active ? _activeText : _inactiveText,
+      color: active ? activeText : inactiveText,
       letterSpacing: 0.6,
     );
 
@@ -46,7 +45,7 @@ class AppBottomNavigationBar extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
             decoration: active
                 ? BoxDecoration(
-                    color: _activeBg,
+                    color: activeBg,
                     borderRadius: BorderRadius.circular(24),
                   )
                 : null,
@@ -54,7 +53,7 @@ class AppBottomNavigationBar extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(active ? icon : icon, color: active ? _activeText : _inactiveText, size: 20),
+                Icon(icon, color: active ? activeText : inactiveText, size: 20),
                 const SizedBox(height: 6),
                 Text(label.toUpperCase(), style: textStyle),
               ],
@@ -67,11 +66,13 @@ class AppBottomNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = CupertinoTheme.of(context);
+
     return SafeArea(
       top: false,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        color: Colors.white,
+        color: theme.scaffoldBackgroundColor,
         child: Row(
           children: [
             Expanded(

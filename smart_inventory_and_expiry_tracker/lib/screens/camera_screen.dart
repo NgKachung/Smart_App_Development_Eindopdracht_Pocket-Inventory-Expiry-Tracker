@@ -247,13 +247,13 @@ class _CameraScreenState extends State<CameraScreen> {
       }
 
       if (product == null) {
-        await showCupertinoDialog<void>(
+        await showAdaptiveDialog<void>(
           context: context,
-          builder: (ctx) => CupertinoAlertDialog(
+          builder: (ctx) => AlertDialog.adaptive(
             title: const Text('Niet gevonden'),
             content: const Text('Geen product gevonden op OpenFoodFacts. Je kunt het handmatig toevoegen.'),
             actions: [
-              CupertinoDialogAction(
+              TextButton(
                 child: const Text('OK'),
                 onPressed: () => Navigator.of(ctx).pop(),
               ),
@@ -290,13 +290,13 @@ class _CameraScreenState extends State<CameraScreen> {
         return;
       }
 
-      await showCupertinoDialog<void>(
+      await showAdaptiveDialog<void>(
         context: context,
-        builder: (ctx) => CupertinoAlertDialog(
+        builder: (ctx) => AlertDialog.adaptive(
           title: const Text('Fout'),
           content: Text('Kon product niet ophalen.\n$e'),
           actions: [
-            CupertinoDialogAction(
+            TextButton(
               child: const Text('OK'),
               onPressed: () => Navigator.of(ctx).pop(),
             ),
@@ -314,30 +314,43 @@ class _CameraScreenState extends State<CameraScreen> {
     final barcodeController = TextEditingController();
     bool isLoading = false;
 
-    return showCupertinoDialog<void>(
+    return showAdaptiveDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setStateDialog) => CupertinoAlertDialog(
+        builder: (context, setStateDialog) => AlertDialog.adaptive(
           title: const Text('Product via barcode'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const SizedBox(height: 12),
-              CupertinoTextField(
-                controller: barcodeController,
-                placeholder: 'Voer barcode in (EAN)',
-                keyboardType: TextInputType.number,
-                enabled: !isLoading,
-              ),
+              if (Platform.isIOS)
+                CupertinoTextField(
+                  controller: barcodeController,
+                  placeholder: 'Voer barcode in (EAN)',
+                  keyboardType: TextInputType.number,
+                  enabled: !isLoading,
+                )
+              else
+                TextField(
+                  controller: barcodeController,
+                  decoration: const InputDecoration(
+                    hintText: 'Voer barcode in (EAN)',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                  enabled: !isLoading,
+                ),
             ],
           ),
           actions: [
-            CupertinoDialogAction(
+            TextButton(
               child: const Text('Annuleren'),
               onPressed: () => Navigator.of(dialogContext).pop(),
             ),
-            CupertinoDialogAction(
-              child: isLoading ? const CupertinoActivityIndicator() : const Text('Volgende'),
+            TextButton(
+              child: isLoading
+                  ? (Platform.isIOS ? const CupertinoActivityIndicator() : const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
+                  : const Text('Volgende'),
               onPressed: isLoading
                   ? null
                   : () async {
@@ -358,13 +371,13 @@ class _CameraScreenState extends State<CameraScreen> {
                         Navigator.of(dialogContext).pop();
 
                         if (product == null) {
-                          await showCupertinoDialog<void>(
+                          await showAdaptiveDialog<void>(
                             context: context,
-                            builder: (ctx) => CupertinoAlertDialog(
+                            builder: (ctx) => AlertDialog.adaptive(
                               title: const Text('Niet gevonden'),
                               content: const Text('Geen product gevonden op OpenFoodFacts. Je kunt het handmatig toevoegen.'),
                               actions: [
-                                CupertinoDialogAction(
+                                TextButton(
                                   child: const Text('OK'),
                                   onPressed: () => Navigator.of(ctx).pop(),
                                 ),
@@ -403,13 +416,13 @@ class _CameraScreenState extends State<CameraScreen> {
 
                         Navigator.of(dialogContext).pop();
 
-                        await showCupertinoDialog<void>(
+                        await showAdaptiveDialog<void>(
                           context: context,
-                          builder: (ctx) => CupertinoAlertDialog(
+                          builder: (ctx) => AlertDialog.adaptive(
                             title: const Text('Fout'),
                             content: Text('Kon product niet ophalen.\n$e'),
                             actions: [
-                              CupertinoDialogAction(
+                              TextButton(
                                 child: const Text('OK'),
                                 onPressed: () => Navigator.of(ctx).pop(),
                               ),
