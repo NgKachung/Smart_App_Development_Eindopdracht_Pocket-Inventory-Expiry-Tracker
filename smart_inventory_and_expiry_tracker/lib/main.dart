@@ -12,16 +12,33 @@ import 'providers/theme_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
   
-  // Initialize notifications
-  final notificationService = NotificationService();
-  await notificationService.init();
-  await notificationService.requestPermissions();
+  // We initialiseren Firebase eerst, maar vangen eventuele fouten op
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint("Firebase init error: $e");
+  }
   
+  // Start de app DIRECT
   runApp(ProviderScope(child: const MainApp()));
+  
+  // Voer de rest van de initialisatie uit NADAT de app is gestart
+  _initializeBackgroundServices();
+}
+
+Future<void> _initializeBackgroundServices() async {
+  try {
+    // Initialize notifications
+    final notificationService = NotificationService();
+    await notificationService.init();
+    // Vraag permissies pas later aan, niet tijdens het opstarten
+    await notificationService.requestPermissions();
+  } catch (e) {
+    debugPrint("Background services error: $e");
+  }
 }
 
 class MainApp extends ConsumerWidget {
