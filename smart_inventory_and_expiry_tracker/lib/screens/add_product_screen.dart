@@ -278,7 +278,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         builder: (context) => AlertDialog.adaptive(
           title: const Text('OpenFoodFacts fout'),
           content: Text('Kon productgegevens niet ophalen.\n$e'),
-          actions: [
+          actions: [  
             TextButton(
               child: const Text('OK'),
               onPressed: () => Navigator.of(context).pop(),

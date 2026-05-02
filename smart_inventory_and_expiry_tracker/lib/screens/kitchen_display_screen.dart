@@ -160,7 +160,6 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3), width: 2),
       ),
       child: Column(
         children: [
