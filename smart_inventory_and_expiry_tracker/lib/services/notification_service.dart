@@ -62,44 +62,37 @@ class NotificationService {
   }
 
   Future<void> scheduleExpiryNotifications(InventoryItem item) async {
-    // We schedule notifications at 09:00 in the morning
-    const notificationHour = 9;
+  const notificationHour = 9;
+  final nu = DateTime.now();
 
-    // 1. Almost Expired (3 days before)
-    final almostExpiredDate = item.expiryDate.subtract(const Duration(days: 3));
-    final scheduledAlmost = DateTime(
-      almostExpiredDate.year,
-      almostExpiredDate.month,
-      almostExpiredDate.day,
-      notificationHour,
-    );
-    
-    if (scheduledAlmost.isAfter(DateTime.now())) {
-      await _scheduleNotification(
-        id: item.id.hashCode,
-        title: 'Product bijna over datum!',
-        body: '${item.title} vervalt over 3 days (${item.expiryDate.toLocal().toString().split(' ')[0]}).',
-        scheduledDate: scheduledAlmost,
-      );
-    }
+  // Lijstje met momenten waarop we willen waarschuwen
+  final waarschuwingsMomenten = [
+    {'dagen': 3, 'titel': 'Product bijna over datum!'},
+    {'dagen': 1, 'titel': 'Product vervalt morgen!'}, // Extra check toegevoegd
+    {'dagen': 0, 'titel': 'Product over datum!'},
+  ];
 
-    // 2. Expired (on the day itself)
-    final scheduledExpired = DateTime(
+  for (var moment in waarschuwingsMomenten) {
+    final scheduledDate = DateTime(
       item.expiryDate.year,
       item.expiryDate.month,
       item.expiryDate.day,
       notificationHour,
-    );
+    ).subtract(Duration(days: moment['dagen'] as int));
 
-    if (scheduledExpired.isAfter(DateTime.now())) {
+    if (scheduledDate.isAfter(nu)) {
       await _scheduleNotification(
-        id: (item.id + '_expired').hashCode,
-        title: 'Product over datum!',
-        body: '${item.title} is vandaag vervallen.',
-        scheduledDate: scheduledExpired,
+        // We maken het ID uniek per type melding
+        id: (item.id + moment['dagen'].toString()).hashCode,
+        title: moment['titel'] as String,
+        body: moment['dagen'] == 0 
+            ? '${item.title} is vandaag vervallen.' 
+            : '${item.title} vervalt over ${moment['dagen']} dag(en).',
+        scheduledDate: scheduledDate,
       );
     }
   }
+}
 
   Future<void> _scheduleNotification({
     required int id,
@@ -130,7 +123,15 @@ class NotificationService {
   }
 
   Future<void> cancelNotifications(String itemId) async {
-    await flutterLocalNotificationsPlugin.cancel(id: itemId.hashCode);
-    await flutterLocalNotificationsPlugin.cancel(id: (itemId + '_expired').hashCode);
+  // 1. Identify the specific variations we created
+  final waarschuwingsDagen = [3, 1, 0];
+  
+  for (var dagen in waarschuwingsDagen) {
+    // 2. Re-calculate the EXACT same ID used during scheduling
+    final notificationId = (itemId + dagen.toString()).hashCode;
+    
+    // 3. Tell the phone: "Delete the alarm with this specific ID"
+    await flutterLocalNotificationsPlugin.cancel(id: notificationId);
   }
+}
 }
